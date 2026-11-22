@@ -5,6 +5,10 @@ Release notes before v1.3.0 are in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- Return to dictionary search history when clearing the query or pressing Back after a lookup.
+
 ## [v1.5.0] - 2026-11-10
 
 ### Added
