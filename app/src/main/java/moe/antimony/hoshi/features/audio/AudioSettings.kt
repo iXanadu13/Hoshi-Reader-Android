@@ -40,6 +40,7 @@ data class AudioSettings(
     val enableLocalAudio: Boolean = false,
     val enableAutoplay: Boolean = false,
     val playbackMode: AudioPlaybackMode = AudioPlaybackMode.Interrupt,
+    val wordAudioCacheLimit: Int = DefaultWordAudioCacheLimit,
 ) {
     val enabledAudioSourceUrls: List<String>
         get() = audioSources.filter { it.isEnabled }.map { it.url }
@@ -96,6 +97,7 @@ private fun AudioSettings.normalizedAudioSettings(): AudioSettings {
         } else {
             withoutLocal.ifEmpty { AudioSettings.DefaultAudioSources }
         },
+        wordAudioCacheLimit = wordAudioCacheLimit.coerceIn(WordAudioCache.MinWordAudioCacheLimit, WordAudioCache.MaxWordAudioCacheLimit),
     )
 }
 
@@ -120,6 +122,7 @@ class AudioSettingsStore(context: Context) : AudioSettingsLegacySource {
             enableLocalAudio = preferences.getBoolean(KEY_ENABLE_LOCAL_AUDIO, false),
             enableAutoplay = preferences.getBoolean(KEY_AUDIO_ENABLE_AUTOPLAY, false),
             playbackMode = AudioPlaybackMode.fromRawValue(preferences.getString(KEY_AUDIO_PLAYBACK_MODE, null)),
+            wordAudioCacheLimit = preferences.getInt(KEY_WORD_AUDIO_CACHE_LIMIT, DefaultWordAudioCacheLimit),
         ).let { settings ->
             if (settings.enableLocalAudio && settings.audioSources.none { it.isBuiltInLocalAudioSource }) {
                 settings.withLocalAudioEnabled(true)
@@ -144,6 +147,7 @@ class AudioSettingsStore(context: Context) : AudioSettingsLegacySource {
             .remove(KEY_LOCAL_AUDIO_DATABASE_URI)
             .putBoolean(KEY_AUDIO_ENABLE_AUTOPLAY, settings.enableAutoplay)
             .putString(KEY_AUDIO_PLAYBACK_MODE, settings.playbackMode.rawValue)
+            .putInt(KEY_WORD_AUDIO_CACHE_LIMIT, settings.wordAudioCacheLimit)
             .apply()
     }
 
@@ -153,6 +157,7 @@ class AudioSettingsStore(context: Context) : AudioSettingsLegacySource {
         const val KEY_LOCAL_AUDIO_DATABASE_URI = "localAudioDatabaseUri"
         const val KEY_AUDIO_ENABLE_AUTOPLAY = "audioEnableAutoplay"
         const val KEY_AUDIO_PLAYBACK_MODE = "audioPlaybackMode"
+        const val KEY_WORD_AUDIO_CACHE_LIMIT = "wordAudioCacheLimit"
     }
 }
 
@@ -213,6 +218,7 @@ class AudioSettingsRepository(
             enableLocalAudio = this[KEY_ENABLE_LOCAL_AUDIO] ?: false,
             enableAutoplay = this[KEY_AUDIO_ENABLE_AUTOPLAY] ?: false,
             playbackMode = AudioPlaybackMode.fromRawValue(this[KEY_AUDIO_PLAYBACK_MODE]),
+            wordAudioCacheLimit = this[KEY_WORD_AUDIO_CACHE_LIMIT] ?: DefaultWordAudioCacheLimit,
         ).normalizedAudioSettings()
     }
 
@@ -226,6 +232,7 @@ class AudioSettingsRepository(
         remove(KEY_LOCAL_AUDIO_DATABASE_URI)
         this[KEY_AUDIO_ENABLE_AUTOPLAY] = normalized.enableAutoplay
         this[KEY_AUDIO_PLAYBACK_MODE] = normalized.playbackMode.rawValue
+        this[KEY_WORD_AUDIO_CACHE_LIMIT] = normalized.wordAudioCacheLimit
     }
 
     companion object {
@@ -240,6 +247,7 @@ class AudioSettingsRepository(
         private val KEY_LOCAL_AUDIO_DATABASE_URI = stringPreferencesKey("localAudioDatabaseUri")
         private val KEY_AUDIO_ENABLE_AUTOPLAY = booleanPreferencesKey("audioEnableAutoplay")
         private val KEY_AUDIO_PLAYBACK_MODE = stringPreferencesKey("audioPlaybackMode")
+        private val KEY_WORD_AUDIO_CACHE_LIMIT = intPreferencesKey("wordAudioCacheLimit")
     }
 }
 

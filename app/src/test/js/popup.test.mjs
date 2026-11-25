@@ -1047,9 +1047,46 @@ test('audio candidate menu renders localized disabled empty state', async () => 
     await context.showAudioCandidateMenu(0, anchor);
 
     const menu = body.children.find((child) => child.className === 'audio-candidate-menu');
-    assert.equal(menu.children.length, 1);
-    assert.equal(menu.children[0].textContent, '未找到音频');
-    assert.equal(menu.children[0].disabled, true);
+    assert.equal(menu.children[0].children[0].textContent, 'Remote: 未找到音频');
+    assert.equal(menu.children[0].children[0].disabled, true);
+    assert.equal(menu.children.at(-1).textContent, 'Refresh all sources');
+});
+
+test('audio candidate menu force refresh reloads every source and keeps failures disabled', async () => {
+    const requests = [];
+    let successfulResponse = 0;
+    const { context, body } = popupContext({
+        fetchImpl: async (requestUrl) => {
+            requests.push(requestUrl);
+            const target = decodeURIComponent(requestUrl.split('url=')[1]);
+            if (target.startsWith('broken://')) {
+                return { json: async () => ({ type: 'audioSourceList', audioSources: [] }) };
+            }
+            successfulResponse++;
+            return {
+                json: async () => ({
+                    type: 'audioSourceList',
+                    audioSources: [{ name: 'Voice', url: `voice-${successfulResponse}.mp3` }],
+                }),
+            };
+        },
+    });
+    context.window.audioSources = [
+        { name: 'Broken', url: 'broken://?term={term}&reading={reading}' },
+        { name: 'Working', url: 'working://?term={term}&reading={reading}' },
+    ];
+    context.window.lookupEntries = [{ expression: '猫', reading: 'ねこ' }];
+
+    await context.showAudioCandidateMenu(0, new FakeElement());
+    const menu = body.children.find((child) => child.className === 'audio-candidate-menu');
+    menu.children.at(-1).dispatch('click', { preventDefault() {}, stopPropagation() {} });
+    await flushAsyncWork();
+
+    assert.equal(requests.length, 4);
+    assert.equal(requests.slice(2).every((url) => url.includes('refresh=1')), true);
+    assert.equal(menu.children[0].children[0].disabled, true);
+    assert.equal(menu.children[1].children[0].textContent, 'Working: Voice');
+    assert.equal(menu.children.at(-1).disabled, false);
 });
 
 test('duplicate refresh updates every format and creates or removes show-notes buttons', async () => {
@@ -1914,7 +1951,7 @@ test('incremental audio menu preserves source order and existing buttons as othe
     const second = menu.children[1].children[0];
     responses.get('first://')([{ url: 'first.mp3' }]);
     await pending;
-    assert.deepEqual(menu.children.map(group => group.children[0].textContent), ['First', 'Second']);
+    assert.deepEqual(menu.children.slice(0, -1).map(group => group.children[0].textContent), ['First', 'Second']);
     assert.equal(menu.children[1].children[0], second, 'do not replace a button the user may be pressing');
 });
 
@@ -1938,8 +1975,8 @@ test('closing or resetting a loading audio menu prevents late results from chang
     finishOld();
     await old;
     assert.deepEqual(body.children.filter(child => child.className === 'audio-candidate-menu'), [current]);
-    assert.equal(current.children[0].textContent, 'No audio found');
-    assert.equal(current.children[0].disabled, true);
+    assert.equal(current.children[0].children[0].textContent, 'Remote: No audio found');
+    assert.equal(current.children[0].children[0].disabled, true);
 });
 
 for (const action of ['play', 'mine']) {

@@ -78,6 +78,7 @@ internal object LookupPopupHtml {
         audioSettings: AudioSettings = AudioSettings(),
         noAudioFoundText: String = "No audio found",
         audioLoadingText: String = "Loading...",
+        audioRefreshText: String = "Refresh all sources",
         ankiSettings: AnkiPopupSettings = AnkiPopupSettings(),
         fontFaceCss: String = "",
         popupScale: Double = 1.0,
@@ -213,6 +214,7 @@ internal object LookupPopupHtml {
                     window.audioSources = ${audioSourcesJson(audioSettings)};
                     window.noAudioFoundText = ${JsonPrimitive(noAudioFoundText)};
                     window.audioLoadingText = ${JsonPrimitive(audioLoadingText)};
+                    window.audioRefreshText = ${JsonPrimitive(audioRefreshText)};
                     window.audioRequestEndpoint = "https://appassets.androidplatform.net/audio";
                     window.dictionaryMediaRequestEndpoint = "https://appassets.androidplatform.net/image";
                     window.disablePopupImageViewportMaxHeight = true;

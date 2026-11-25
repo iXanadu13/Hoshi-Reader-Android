@@ -544,6 +544,12 @@
     <string name="audio_playback_interrupt">打断</string>
     <string name="audio_playback_duck">降低音量</string>
     <string name="audio_playback_mix">保持音量</string>
+    <string name="audio_cache">单词音频缓存</string>
+    <string name="audio_cache_word_limit">缓存单词上限</string>
+    <string name="audio_cache_word_limit_hint">当前已缓存单词：%1$d</string>
+    <string name="audio_cache_clear">清除已缓存单词音频</string>
+    <string name="audio_cache_clear_confirm_title">清除已缓存的单词音频？</string>
+    <string name="audio_cache_clear_confirm_text">所有已下载的单词音频都会被删除，需要时可以重新下载。</string>
     <string name="audio_local_audio">本地音频</string>
     <string name="audio_import_android_db">导入 android.db</string>
     <string name="audio_import_android_db_failed">无法导入 android.db。</string>
@@ -571,6 +577,7 @@
     <string name="audio_local_source_save_failed">无法保存本地音频来源设置。</string>
     <string name="audio_local_database_read_failed">无法读取本地音频数据库。</string>
     <string name="audio_no_audio_found">未找到音频</string>
+    <string name="audio_refresh_all_sources">强制更新所有来源</string>
     <string name="anki_fetch_decks_ankiconnect">从 AnkiConnect 获取牌组和笔记类型。</string>
     <string name="anki_fetch_decks_ankidroid">从 %1$s 获取牌组和笔记类型。</string>
     <string name="anki_open_app_settings">打开应用设置</string>

@@ -231,6 +231,7 @@ internal fun DictionarySearchView(
     }
     val noAudioFoundText = stringResource(R.string.audio_no_audio_found)
     val audioLoadingText = stringResource(R.string.loading)
+    val audioRefreshText = stringResource(R.string.audio_refresh_all_sources)
     val popupAudioSettings = uiState.audioSettings.withLocalizedSourceNames()
     val readerPopupIframeDocument = remember(
         uiState.dictionaryStyles,
@@ -247,6 +248,7 @@ internal fun DictionarySearchView(
         rootContentLanguageProfile,
         noAudioFoundText,
         audioLoadingText,
+        audioRefreshText,
     ) {
         LookupPopupHtml.renderIframeDocument(
             assets = null,
@@ -261,6 +263,7 @@ internal fun DictionarySearchView(
             audioSettings = popupAudioSettings,
             noAudioFoundText = noAudioFoundText,
             audioLoadingText = audioLoadingText,
+            audioRefreshText = audioRefreshText,
             ankiSettings = ankiUiState.popupSettings,
             fontFaceCss = fontFaceCss,
             popupScale = readerSettings.popupScale,
@@ -476,7 +479,7 @@ internal fun DictionarySearchView(
                 }
             }
             is ReaderLookupPopupBridgeMessage.PlayWordAudio -> {
-                WordAudioPlayer.get(context).play(message.url, message.mode)
+                WordAudioPlayer.get(context).play(message.url, message.mode, message.term, message.reading)
             }
             is ReaderLookupPopupBridgeMessage.MineEntry -> {
                 val messageId = message.messageId ?: return

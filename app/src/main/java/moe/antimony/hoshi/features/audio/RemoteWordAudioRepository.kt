@@ -19,15 +19,44 @@ class RemoteWordAudioRepository(
     private val http: AudioHttpClient,
     private val ioDispatcher: CoroutineDispatcher,
     private val digest: (ByteArray) -> String = ::audioSha256,
+    private val wordAudioCache: WordAudioCache? = null,
 ) {
-    suspend fun resolve(source: BuiltInAudioSource, term: String, reading: String): List<WordAudioCandidate> =
+    suspend fun resolve(
+        source: BuiltInAudioSource,
+        term: String,
+        reading: String,
+        forceRefresh: Boolean = false,
+    ): List<WordAudioCandidate> =
         withContext(ioDispatcher) {
             try {
+                wordAudioCache?.let { cache ->
+                    if (forceRefresh) {
+                        try {
+                            cache.clearSource(term, reading, source.id)
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                        }
+                    } else {
+                        val cached = try {
+                            cache.cachedCandidates(term, reading, source.id)
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            emptyList()
+                        }
+                        cached
+                            .takeIf { it.isNotEmpty() }
+                            ?.let { candidates ->
+                                return@withContext candidates.map { candidate -> WordAudioCandidate(candidate.url, candidate.name) }
+                            }
+                    }
+                }
                 when (source) {
                     BuiltInAudioSource.JapanesePod101 -> japanesePod101(term, reading)
                     BuiltInAudioSource.LanguagePod101 -> languagePod101(term, reading)
                     BuiltInAudioSource.Jisho -> jisho(term, reading)
-                }.map { WordAudioCandidate(it) }
+                }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
@@ -35,7 +64,7 @@ class RemoteWordAudioRepository(
             }
         }
 
-    private fun japanesePod101(term: String, reading: String): List<String> {
+    private suspend fun japanesePod101(term: String, reading: String): List<WordAudioCandidate> {
         // Match Yomitan's kana-only query rule (U+3040..U+30FF, not half-width kana).
         val kanaOnly = term.isNotEmpty() && term == reading && term.all { it.code in 0x3040..0x30ff }
         val query = buildMap {
@@ -50,28 +79,63 @@ class RemoteWordAudioRepository(
         if (digest(response.body) == "ae6398b5a27bc8c0a771df6c907ade794be15518174773c58c7c7ddd17098906") {
             return emptyList()
         }
-        return listOf(url)
+        cacheAudio("$term", reading, BuiltInAudioSource.JapanesePod101.id, url, response.body)
+        return listOf(WordAudioCandidate(url))
     }
 
-    private fun languagePod101(term: String, reading: String): List<String> {
+    private suspend fun languagePod101(term: String, reading: String): List<WordAudioCandidate> {
         val response = http.request(
             "https://www.japanesepod101.com/learningcenter/reference/dictionary_post",
             linkedMapOf("post" to "dictionary_reference", "match_type" to "exact", "search_query" to term, "vulgar" to "true"),
         )
         val document = response.document() ?: return emptyList()
-        return document.getElementsByClass("dc-result-row").mapNotNull { row ->
+        val candidates = document.getElementsByClass("dc-result-row").mapNotNull { row ->
             val htmlReading = row.getElementsByClass("dc-vocab_kana").firstOrNull()?.wholeText()
             if (htmlReading.isNullOrEmpty() || (reading != term && reading != htmlReading)) return@mapNotNull null
             row.selectFirst("audio source")?.attr("src")?.let { resolveAudioUrl(response.url, it) }
         }.distinct()
+        return cacheCandidates(BuiltInAudioSource.LanguagePod101, term, reading, candidates)
     }
 
-    private fun jisho(term: String, reading: String): List<String> {
+    private suspend fun jisho(term: String, reading: String): List<WordAudioCandidate> {
         val encodedTerm = URLEncoder.encode(term, Charsets.UTF_8.name()).replace("+", "%20")
         val response = http.request("https://jisho.org/search/$encodedTerm", null)
         val document = response.document() ?: return emptyList()
         val source = document.getElementById("audio_$term:$reading")?.getElementsByTag("source")?.firstOrNull()
-        return listOfNotNull(source?.attr("src")?.let { resolveAudioUrl(response.url, it) })
+        val candidates = listOfNotNull(source?.attr("src")?.let { resolveAudioUrl(response.url, it) })
+        return cacheCandidates(BuiltInAudioSource.Jisho, term, reading, candidates)
+    }
+
+    private suspend fun cacheCandidates(
+        source: BuiltInAudioSource,
+        term: String,
+        reading: String,
+        urls: List<String>,
+    ): List<WordAudioCandidate> {
+        val cache = wordAudioCache ?: return urls.map(::WordAudioCandidate)
+        val result = mutableListOf<WordAudioCandidate>()
+        for (url in urls) {
+            val response = http.request(url, null)
+            if (!response.isSuccessfulAudio()) continue
+            try {
+                cache.store(term, reading, source.id, url, response.body)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+            }
+            result += WordAudioCandidate(url)
+        }
+        return result
+    }
+
+    private suspend fun cacheAudio(term: String, reading: String, sourceKey: String, url: String, body: ByteArray) {
+        val cache = wordAudioCache ?: return
+        try {
+            cache.store(term, reading, sourceKey, url, body)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+        }
     }
 }
 
@@ -80,6 +144,12 @@ private fun AudioHttpResponse.isMp3(): Boolean {
     if (mime.isNotEmpty() && mime != "application/octet-stream" && !mime.startsWith("audio/")) return false
     return (body.size >= 3 && body[0] == 0x49.toByte() && body[1] == 0x44.toByte() && body[2] == 0x33.toByte()) ||
         (body.size >= 2 && body[0] == 0xff.toByte() && (body[1].toInt() and 0xe0) == 0xe0)
+}
+
+internal fun AudioHttpResponse.isSuccessfulAudio(): Boolean {
+    if (status !in 200..299 || body.isEmpty()) return false
+    val mime = contentType.substringBefore(';').trim().lowercase()
+    return mime.isEmpty() || mime == "application/octet-stream" || mime.startsWith("audio/") || isMp3()
 }
 
 private fun AudioHttpResponse.document(): Document? {

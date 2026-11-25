@@ -240,6 +240,8 @@ internal sealed class ReaderLookupPopupBridgeMessage {
         override val messageId: String?,
         val url: String,
         val mode: AudioPlaybackMode,
+        val term: String = "",
+        val reading: String = "",
     ) : ReaderLookupPopupBridgeMessage()
 
     data class MineEntry(
@@ -365,6 +367,8 @@ internal sealed class ReaderLookupPopupBridgeMessage {
                         messageId = messageId,
                         url = body.string("url") ?: return null,
                         mode = AudioPlaybackMode.fromRawValue(body.string("mode")),
+                        term = body.string("term").orEmpty(),
+                        reading = body.string("reading").orEmpty(),
                     )
                 }
                 "mineEntry" -> {

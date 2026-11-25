@@ -22,6 +22,7 @@ import moe.antimony.hoshi.features.audio.AudioRequestHandler
 import moe.antimony.hoshi.features.audio.LocalAudioRepository
 import moe.antimony.hoshi.features.audio.RemoteWordAudioRepository
 import moe.antimony.hoshi.features.audio.UrlConnectionAudioHttpClient
+import moe.antimony.hoshi.features.audio.WordAudioCache
 import moe.antimony.hoshi.features.audio.audioSettingsRepository
 import moe.antimony.hoshi.features.bookshelf.BookshelfSettingsRepository
 import moe.antimony.hoshi.features.bookshelf.bookshelfSettingsRepository
@@ -146,15 +147,23 @@ internal object HoshiAppModule {
     @Singleton
     fun provideRemoteWordAudioRepository(
         client: UrlConnectionAudioHttpClient,
+        wordAudioCache: WordAudioCache,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
-    ): RemoteWordAudioRepository = RemoteWordAudioRepository(client, ioDispatcher)
+    ): RemoteWordAudioRepository = RemoteWordAudioRepository(client, ioDispatcher, wordAudioCache = wordAudioCache)
 
     @Provides
     @Singleton
     fun provideAudioRequestHandler(
         local: LocalAudioRepository,
         remote: RemoteWordAudioRepository,
-    ): AudioRequestHandler = AudioRequestHandler(local, remote)
+        client: UrlConnectionAudioHttpClient,
+        wordAudioCache: WordAudioCache,
+    ): AudioRequestHandler = AudioRequestHandler(
+        localAudioRepository = local,
+        remoteAudioRepository = remote,
+        wordAudioCache = wordAudioCache,
+        fetchRemoteAudio = { url -> client.request(url, null) },
+    )
 
     @Provides
     @Singleton

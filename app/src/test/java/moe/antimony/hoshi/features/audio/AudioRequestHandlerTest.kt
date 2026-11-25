@@ -3,8 +3,10 @@ package moe.antimony.hoshi.features.audio
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import java.net.URLEncoder
 import java.nio.file.Files
+import kotlinx.serialization.json.Json
 
 class AudioRequestHandlerTest {
     private val remoteRepository = RemoteWordAudioRepository(
@@ -98,6 +100,47 @@ class AudioRequestHandlerTest {
             """{"type":"audioSourceList","audioSources":[{"name":"nhk16","url":"http://localhost:8765/localaudio/nhk16/yomu.mp3"}]}""",
             body?.toString(Charsets.UTF_8),
         )
+    }
+
+    @Test
+    fun externalAudioSourceCachesOnlySuccessfulAudioAndReusesIt() {
+        val cacheRoot = Files.createTempDirectory("hoshi-word-audio-cache").toFile()
+        val cacheScope = kotlinx.coroutines.CoroutineScope(Dispatchers.Unconfined + kotlinx.coroutines.Job())
+        try {
+            val cache = WordAudioCache(cacheRoot, Dispatchers.Unconfined, cacheScope)
+            var listRequests = 0
+            var audioRequests = 0
+            val handler = AudioRequestHandler(
+                localAudioRepository = LocalAudioRepository(Files.createTempDirectory("hoshi-audio-request").toFile()),
+                remoteAudioRepository = remoteRepository,
+                wordAudioCache = cache,
+                fetchRemoteAudioList = {
+                    listRequests++
+                    """{"type":"audioSourceList","audioSources":[{"name":"Good","url":"https://example.com/good.mp3"},{"name":"Bad","url":"https://example.com/bad.mp3"}]}""".toByteArray()
+                },
+                fetchRemoteAudio = { url ->
+                    audioRequests++
+                    if (url.endsWith("good.mp3")) {
+                        AudioHttpResponse(url, 200, "audio/mpeg", byteArrayOf(0x49, 0x44, 0x33))
+                    } else {
+                        AudioHttpResponse(url, 404, "audio/mpeg", byteArrayOf())
+                    }
+                },
+            )
+            val target = "https://example.com/source"
+            val request = "https://appassets.androidplatform.net/audio?term=%E7%8C%AB&reading=%E3%81%AD%E3%81%93&source=custom&url=${target.urlEncodeForQuery()}"
+
+            val first = Json.parseToJsonElement(handler.handleAudioRequestBody(request)!!.toString(Charsets.UTF_8))
+            val second = Json.parseToJsonElement(handler.handleAudioRequestBody(request)!!.toString(Charsets.UTF_8))
+
+            assertEquals(first, second)
+            assertEquals(1, listRequests)
+            assertEquals(2, audioRequests)
+            assertEquals(1, cache.state.value.cachedWordCount)
+        } finally {
+            cacheScope.cancel()
+            cacheRoot.deleteRecursively()
+        }
     }
 
     @Test

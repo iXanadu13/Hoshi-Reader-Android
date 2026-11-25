@@ -11,6 +11,7 @@ import moe.antimony.hoshi.epub.EpubBookParser
 import moe.antimony.hoshi.features.audio.AudioSettingsRepository
 import moe.antimony.hoshi.features.audio.AudioRequestHandler
 import moe.antimony.hoshi.features.audio.LocalAudioRepository
+import moe.antimony.hoshi.features.audio.WordAudioCache
 import moe.antimony.hoshi.features.backup.HoshiBackupRepository
 import moe.antimony.hoshi.features.dictionary.DictionarySettingsRepository
 import moe.antimony.hoshi.features.reader.ReaderPageCountRepository
@@ -52,6 +53,7 @@ internal class HoshiUiDependencies @Inject constructor(
     private val readerPageCountRepositoryProvider: Lazy<ReaderPageCountRepository>,
     private val readerFontManagerProvider: Lazy<ReaderFontManager>,
     private val localAudioRepositoryProvider: Lazy<LocalAudioRepository>,
+    private val wordAudioCacheProvider: Lazy<WordAudioCache>,
     private val backupRepositoryProvider: Lazy<HoshiBackupRepository>,
     private val storageCleanupRepositoryProvider: Lazy<StorageCleanupRepository>,
     private val googleDriveSyncManagerProvider: Lazy<GoogleDriveSyncManager>,
@@ -82,6 +84,7 @@ internal class HoshiUiDependencies @Inject constructor(
     val readerPageCountRepository: ReaderPageCountRepository get() = readerPageCountRepositoryProvider.get()
     val readerFontManager: ReaderFontManager get() = readerFontManagerProvider.get()
     val localAudioRepository: LocalAudioRepository get() = localAudioRepositoryProvider.get()
+    val wordAudioCache: WordAudioCache get() = wordAudioCacheProvider.get()
     val backupRepository: HoshiBackupRepository get() = backupRepositoryProvider.get()
     val storageCleanupRepository: StorageCleanupRepository get() = storageCleanupRepositoryProvider.get()
     val googleDriveSyncManager: GoogleDriveSyncManager get() = googleDriveSyncManagerProvider.get()

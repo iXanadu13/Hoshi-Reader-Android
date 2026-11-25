@@ -343,6 +343,7 @@ fun ReaderWebView(
     val progressDisplay = readerProgressDisplay(contentLanguageProfile)
     val noAudioFoundText = stringResource(R.string.audio_no_audio_found)
     val audioLoadingText = stringResource(R.string.loading)
+    val audioRefreshText = stringResource(R.string.audio_refresh_all_sources)
     val popupAudioSettings = audioSettings.withLocalizedSourceNames()
     val readerPopupIframeDocument = remember(
         dictionaryStyles,
@@ -360,6 +361,7 @@ fun ReaderWebView(
         popupContentLanguageProfile,
         noAudioFoundText,
         audioLoadingText,
+        audioRefreshText,
     ) {
         LookupPopupHtml.renderIframeDocument(
             assets = null,
@@ -374,6 +376,7 @@ fun ReaderWebView(
             audioSettings = popupAudioSettings,
             noAudioFoundText = noAudioFoundText,
             audioLoadingText = audioLoadingText,
+            audioRefreshText = audioRefreshText,
             ankiSettings = ankiUiState.popupSettings,
             fontFaceCss = fontManager.popupFontFaceCss(),
             popupScale = effectiveSettings.popupScale,
@@ -977,7 +980,7 @@ fun ReaderWebView(
                 highlightReaderPopupSelection(message.popupId, highlightCount)
             }
             is ReaderLookupPopupBridgeMessage.PlayWordAudio -> {
-                WordAudioPlayer.get(context).play(message.url, message.mode)
+                WordAudioPlayer.get(context).play(message.url, message.mode, message.term, message.reading)
             }
             is ReaderLookupPopupBridgeMessage.MineEntry -> {
                 val popup = popupById(message.popupId) ?: return

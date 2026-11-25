@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,6 +31,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -37,6 +39,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -88,10 +91,15 @@ fun AudioSettingsView(
     val settingsLoader = audioSettingsRepository.settings.rememberSettingsLoader()
     val localAudio: LocalAudioSettingsViewModel = hiltViewModel()
     val localState by localAudio.state.collectAsStateWithLifecycle()
+    val audioCacheState by appContainer.wordAudioCache.state.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { localAudio.refresh() }
     var nameInput by remember { mutableStateOf("") }
     var urlInput by remember { mutableStateOf("") }
     var showImportOptions by rememberSaveable { mutableStateOf(false) }
+    var showClearCacheConfirmation by rememberSaveable { mutableStateOf(false) }
+    var showCacheLimitEditor by rememberSaveable { mutableStateOf(false) }
+    var isClearingCache by remember { mutableStateOf(false) }
+    var cacheLimitInput by rememberSaveable { mutableStateOf("") }
     val copyPicker = rememberLauncherForActivityResult(FileImportContent()) { uri ->
         uri?.let { localAudio.importDatabase(it, LocalAudioImportMode.Copy) }
     }
@@ -102,6 +110,14 @@ fun AudioSettingsView(
     fun save(next: AudioSettings) {
         scope.launch {
             audioSettingsRepository.update { next }
+            appContainer.wordAudioCache.setMaxWordCount(next.wordAudioCacheLimit)
+        }
+    }
+
+    fun saveCacheLimit(limit: Int) {
+        scope.launch {
+            audioSettingsRepository.update { it.copy(wordAudioCacheLimit = limit) }
+            appContainer.wordAudioCache.setMaxWordCount(limit)
         }
     }
 
@@ -121,6 +137,10 @@ fun AudioSettingsView(
         onRetry = settingsLoader.retry,
         modifier = modifier,
     ) { innerPadding, loadedSettings ->
+        LaunchedEffect(loadedSettings.wordAudioCacheLimit) {
+            cacheLimitInput = loadedSettings.wordAudioCacheLimit.toString()
+            appContainer.wordAudioCache.setMaxWordCount(loadedSettings.wordAudioCacheLimit)
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -233,6 +253,56 @@ fun AudioSettingsView(
                     }
                 }
                 item {
+                    SectionTitle(stringResource(R.string.audio_cache))
+                    GroupCard {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text(stringResource(R.string.audio_cache_word_limit)) },
+                            supportingContent = {
+                                Text(
+                                    stringResource(
+                                        R.string.audio_cache_word_limit_hint,
+                                        audioCacheState.cachedWordCount,
+                                    ),
+                                )
+                            },
+                            trailingContent = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = loadedSettings.wordAudioCacheLimit.toString(),
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                    )
+                                    IconButton(
+                                        onClick = {
+                                            cacheLimitInput = loadedSettings.wordAudioCacheLimit.toString()
+                                            showCacheLimitEditor = true
+                                        },
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.Edit,
+                                            contentDescription = stringResource(R.string.action_edit),
+                                        )
+                                    }
+                                }
+                            },
+                        )
+                        GroupDivider()
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text(stringResource(R.string.audio_cache_clear)) },
+                            trailingContent = {
+                                OutlinedButton(
+                                    enabled = !isClearingCache,
+                                    onClick = { showClearCacheConfirmation = true },
+                                ) {
+                                    Text(stringResource(R.string.action_clear))
+                                }
+                            },
+                        )
+                    }
+                }
+                item {
                     SectionTitle(stringResource(R.string.audio_local_audio))
                     GroupCard {
                         ListItem(
@@ -282,6 +352,67 @@ fun AudioSettingsView(
                 )
             }
         }
+    }
+    if (showCacheLimitEditor) {
+        val limit = cacheLimitInput.toIntOrNull()
+        HoshiAlertDialog(
+            onDismissRequest = { showCacheLimitEditor = false },
+            title = { Text(stringResource(R.string.audio_cache_word_limit)) },
+            text = {
+                OutlinedTextField(
+                    value = cacheLimitInput,
+                    onValueChange = { cacheLimitInput = it.filter(Char::isDigit) },
+                    label = { Text(stringResource(R.string.audio_cache_word_limit)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                Button(
+                    enabled = limit != null && limit in WordAudioCache.MinWordAudioCacheLimit..WordAudioCache.MaxWordAudioCacheLimit,
+                    onClick = {
+                        if (limit != null) {
+                            saveCacheLimit(limit)
+                            showCacheLimitEditor = false
+                        }
+                    },
+                ) {
+                    Text(stringResource(R.string.action_save))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCacheLimitEditor = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+    if (showClearCacheConfirmation) {
+        HoshiAlertDialog(
+            onDismissRequest = { showClearCacheConfirmation = false },
+            title = { Text(stringResource(R.string.audio_cache_clear_confirm_title)) },
+            text = { Text(stringResource(R.string.audio_cache_clear_confirm_text)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearCacheConfirmation = false
+                        isClearingCache = true
+                        scope.launch {
+                            try {
+                                appContainer.wordAudioCache.clearAll()
+                            } finally {
+                                isClearingCache = false
+                            }
+                        }
+                    },
+                ) { Text(stringResource(R.string.action_clear)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearCacheConfirmation = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
     }
     if (showImportOptions) {
         LocalAudioImportOptions(

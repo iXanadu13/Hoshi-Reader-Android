@@ -2,6 +2,9 @@ package moe.antimony.hoshi.features.audio
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -9,6 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 import java.net.SocketTimeoutException
+import java.nio.file.Files
 
 class RemoteWordAudioRepositoryTest {
     private val mp3 = byteArrayOf(0x49, 0x44, 0x33, 4, 0, 0, 0, 0, 0, 0)
@@ -49,6 +53,33 @@ class RemoteWordAudioRepositoryTest {
         )
         assertTrue(placeholder.resolve(BuiltInAudioSource.JapanesePod101, "猫", "ねこ").isEmpty())
         assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", audioSha256("abc".toByteArray()))
+    }
+
+    @Test fun jpodStoresAudioAndDoesNotDownloadItAgain() = runBlocking {
+        val root = Files.createTempDirectory("hoshi-word-audio-cache").toFile()
+        val scope = CoroutineScope(Dispatchers.Unconfined + Job())
+        try {
+            var requests = 0
+            val cache = WordAudioCache(root, Dispatchers.Unconfined, scope)
+            val repo = RemoteWordAudioRepository(
+                AudioHttpClient { url, _ ->
+                    requests++
+                    AudioHttpResponse(url, 200, "audio/mpeg", mp3)
+                },
+                Dispatchers.Unconfined,
+                wordAudioCache = cache,
+            )
+
+            val first = repo.resolve(BuiltInAudioSource.JapanesePod101, "猫", "ねこ")
+            val second = repo.resolve(BuiltInAudioSource.JapanesePod101, "猫", "ねこ")
+
+            assertEquals(first, second)
+            assertEquals(1, requests)
+            assertEquals(mp3.toList(), cache.cachedFile("猫", "ねこ", first.single().url)?.readBytes()?.toList())
+        } finally {
+            scope.cancel()
+            root.deleteRecursively()
+        }
     }
 
     @Test fun languagePodPostsExactQueryFiltersReadingsAndResolvesAgainstFinalUrl() = runBlocking {

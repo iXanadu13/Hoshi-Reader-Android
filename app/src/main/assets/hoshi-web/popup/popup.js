@@ -1675,7 +1675,7 @@ function createTags(entry) {
     return container;
 }
 
-async function fetchAudioSources(source, expression, reading) {
+async function fetchAudioSources(source, expression, reading, forceRefresh = false) {
     const template = typeof source === 'string' ? source : source?.url;
     if (!template) {
         return [];
@@ -1684,9 +1684,16 @@ async function fetchAudioSources(source, expression, reading) {
         .replace('{term}', encodeURIComponent(expression))
         .replace('{reading}', encodeURIComponent(reading));
     try {
+        const query = [
+            `term=${encodeURIComponent(expression)}`,
+            `reading=${encodeURIComponent(reading)}`,
+            `source=${encodeURIComponent(template)}`,
+            forceRefresh ? 'refresh=1' : '',
+            `url=${encodeURIComponent(url)}`,
+        ].filter(Boolean).join('&');
         const audioRequestUrl = window.audioRequestEndpoint
-            ? `${window.audioRequestEndpoint}?url=${encodeURIComponent(url)}`
-            : `audio://?url=${encodeURIComponent(url)}`;
+            ? `${window.audioRequestEndpoint}?${query}`
+            : `audio://?${query}`;
         const response = await fetch(audioRequestUrl);
         const data = await response.json();
         if (data.type !== 'audioSourceList') {
@@ -1757,14 +1764,14 @@ async function showAudioCandidateMenu(entryIndex, anchor) {
     const groups = sources.map(source => {
         const name = typeof source === 'string' ? 'Audio' : (source.name || 'Audio');
         const container = el('div');
-        container.appendChild(el('button', {
-            className: 'audio-candidate-menu-item',
-            textContent: `${name}: ${window.audioLoadingText || 'Loading...'}`,
-            disabled: true,
-        }));
         menu.appendChild(container);
         return { name, container, candidates: null, buttons: [] };
     });
+    const refreshButton = el('button', {
+        className: 'audio-candidate-menu-item',
+        textContent: window.audioRefreshText || 'Refresh all sources',
+    });
+    menu.appendChild(refreshButton);
     const stopMenuEvent = event => event.stopPropagation();
     menu.addEventListener('pointerdown', stopMenuEvent);
     menu.addEventListener('click', stopMenuEvent);
@@ -1779,6 +1786,40 @@ async function showAudioCandidateMenu(entryIndex, anchor) {
 
     const isCurrent = () => generation === audioStateGeneration &&
         activeAudioCandidateMenu?.menu === menu && anchor.isConnected;
+    const renderGroup = group => {
+        group.container.replaceChildren();
+        if (group.candidates === null) {
+            group.container.appendChild(el('button', {
+                className: 'audio-candidate-menu-item',
+                textContent: `${group.name}: ${window.audioLoadingText || 'Loading...'}`,
+                disabled: true,
+            }));
+            return;
+        }
+        if (group.candidates.length === 0) {
+            group.container.appendChild(el('button', {
+                className: 'audio-candidate-menu-item',
+                textContent: `${group.name}: ${window.noAudioFoundText || 'No audio found'}`,
+                disabled: true,
+            }));
+            return;
+        }
+        group.buttons = group.candidates.map(candidate => {
+            const item = el('button', { className: 'audio-candidate-menu-item' });
+            item.addEventListener('click', event => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (!isCurrent()) return;
+                // Bind the URL, not a list index that can shift as sources finish.
+                audioSelectionVersions[entryIndex] = (audioSelectionVersions[entryIndex] || 0) + 1;
+                audioUrls[entryIndex] = candidate.url;
+                closeAudioCandidateMenu();
+                playEntryAudio(entryIndex);
+            });
+            return item;
+        });
+        group.container.replaceChildren(...group.buttons);
+    };
     const updateMenu = () => {
         if (!isCurrent()) return;
         const counts = {};
@@ -1788,13 +1829,6 @@ async function showAudioCandidateMenu(entryIndex, anchor) {
             group.buttons[index].textContent = counts[name] > 1 ? `${name} ${counts[name]}` : name;
             group.buttons[index].setAttribute('data-selected', String(candidate.url === audioUrls[entryIndex]));
         }));
-        if (groups.every(group => group.candidates?.length === 0)) {
-            menu.replaceChildren(el('button', {
-                className: 'audio-candidate-menu-item',
-                textContent: window.noAudioFoundText || 'No audio found',
-                disabled: true,
-            }));
-        }
         requestAnimationFrame(() => {
             if (!isCurrent()) return;
             const anchorRect = anchor.getBoundingClientRect();
@@ -1819,29 +1853,41 @@ async function showAudioCandidateMenu(entryIndex, anchor) {
         });
     };
     updateMenu();
-    await Promise.all(sources.map(async (source, index) => {
-        requests[index] ||= fetchAudioSources(source, entry.expression, entry.reading);
-        const candidates = await requests[index];
-        if (!isCurrent()) return;
-        const group = groups[index];
-        group.candidates = candidates;
-        group.buttons = candidates.map(candidate => {
-            const item = el('button', { className: 'audio-candidate-menu-item' });
-            item.addEventListener('click', event => {
-                event.preventDefault();
-                event.stopPropagation();
-                if (!isCurrent()) return;
-                // Bind the URL, not a list index that can shift as sources finish.
-                audioSelectionVersions[entryIndex] = (audioSelectionVersions[entryIndex] || 0) + 1;
-                audioUrls[entryIndex] = candidate.url;
-                closeAudioCandidateMenu();
-                playEntryAudio(entryIndex);
+    const loadSources = async (forceRefresh = false) => {
+        if (forceRefresh) {
+            audioSelectionVersions[entryIndex] = (audioSelectionVersions[entryIndex] || 0) + 1;
+            audioUrls[entryIndex] = null;
+            sources.forEach((source, index) => {
+                requests[index] = fetchAudioSources(source, entry.expression, entry.reading, true);
+                groups[index].candidates = null;
+                groups[index].buttons = [];
+                renderGroup(groups[index]);
             });
-            return item;
-        });
-        group.container.replaceChildren(...group.buttons);
+        }
+        refreshButton.disabled = true;
+        refreshButton.textContent = window.audioLoadingText || 'Loading...';
+        await Promise.all(sources.map(async (source, index) => {
+            requests[index] ||= fetchAudioSources(source, entry.expression, entry.reading);
+            const candidates = await requests[index];
+            if (!isCurrent()) return;
+            const group = groups[index];
+            group.candidates = candidates;
+            renderGroup(group);
+            updateMenu();
+        }));
+        if (!isCurrent()) return;
+        refreshButton.disabled = false;
+        refreshButton.textContent = window.audioRefreshText || 'Refresh all sources';
         updateMenu();
-    }));
+    };
+    refreshButton.addEventListener('click', async event => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!isCurrent() || refreshButton.disabled) return;
+        await loadSources(true);
+    });
+    groups.forEach(renderGroup);
+    await loadSources();
 }
 
 function resetAudioCandidateState() {
@@ -1852,7 +1898,7 @@ function resetAudioCandidateState() {
     closeAudioCandidateMenu();
 }
 
-function playWordAudio(audioUrl) {
+function playWordAudio(audioUrl, entry = null) {
     const playHandler = window.webkit?.messageHandlers?.playWordAudio;
     if (!playHandler) {
         return false;
@@ -1861,6 +1907,8 @@ function playWordAudio(audioUrl) {
     try {
         playHandler.postMessage({
             url: audioUrl,
+            term: entry?.expression || '',
+            reading: entry?.reading || '',
             mode: window.audioPlaybackMode || 'interrupt'
         });
         return true;
@@ -1995,7 +2043,7 @@ async function playEntryAudio(entryIndex, sourceIndex = null) {
         if (selection !== audioUrls || selectionVersion !== (audioSelectionVersions[entryIndex] || 0)) return;
         selection[entryIndex] = list[sourceIndex ?? 0]?.url || null;
     }
-    if (!audioUrls[entryIndex] || !playWordAudio(audioUrls[entryIndex])) {
+    if (!audioUrls[entryIndex] || !playWordAudio(audioUrls[entryIndex], entry)) {
         updateButtonSlot(audioSlot, { state: 'error' });
         setTimeout(() => updateButtonSlot(audioSlot, { state: 'default' }), 1500);
     }

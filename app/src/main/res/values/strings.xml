@@ -546,6 +546,12 @@
     <string name="audio_playback_interrupt">Interrupt</string>
     <string name="audio_playback_duck">Lower Volume</string>
     <string name="audio_playback_mix">Keep Volume</string>
+    <string name="audio_cache">Word Audio Cache</string>
+    <string name="audio_cache_word_limit">Cached word limit</string>
+    <string name="audio_cache_word_limit_hint">Currently cached words: %1$d</string>
+    <string name="audio_cache_clear">Clear cached word audio</string>
+    <string name="audio_cache_clear_confirm_title">Clear cached word audio?</string>
+    <string name="audio_cache_clear_confirm_text">All downloaded word audio will be removed. It can be downloaded again when needed.</string>
     <string name="audio_local_audio">Local Audio</string>
     <string name="audio_import_android_db">Import android.db</string>
     <string name="audio_import_android_db_failed">Unable to import android.db.</string>
@@ -573,6 +579,7 @@
     <string name="audio_local_source_save_failed">Unable to save local audio source settings.</string>
     <string name="audio_local_database_read_failed">Unable to read the local audio database.</string>
     <string name="audio_no_audio_found">No audio found</string>
+    <string name="audio_refresh_all_sources">Refresh all sources</string>
     <string name="anki_fetch_decks_ankiconnect">Fetch decks and note types from AnkiConnect.</string>
     <string name="anki_fetch_decks_ankidroid">Fetch decks and note types from %1$s.</string>
     <string name="anki_open_app_settings">Open App Settings</string>

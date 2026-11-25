@@ -8,6 +8,7 @@ Release notes before v1.3.0 are in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).
 ### Fixed
 
 - Return to dictionary search history when clearing the query or pressing Back after a lookup.
+- Cache word audio by word for faster replay, with configurable retention, source refresh, and cache clearing controls.
 
 ## [v1.5.0] - 2026-11-10
 

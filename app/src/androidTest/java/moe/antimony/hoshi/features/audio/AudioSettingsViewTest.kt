@@ -1,10 +1,13 @@
 package moe.antimony.hoshi.features.audio
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -35,6 +38,19 @@ class AudioSettingsViewTest {
         assertEquals(lowerVolumeBounds.width, keepVolumeBounds.width, 0.5f)
         assertEquals(lowerVolumeBounds.height, interruptBounds.height, 0.5f)
         assertEquals(lowerVolumeBounds.height, keepVolumeBounds.height, 0.5f)
+    }
+
+    @Test
+    fun cacheLimitUsesSingleRowWithEditAction() {
+        composeRule.setContent {
+            MaterialTheme {
+                AudioSettingsView(onClose = {})
+            }
+        }
+
+        composeRule.onAllNodesWithText("Cached word limit").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Currently cached words:", substring = true).assertCountEquals(1)
+        composeRule.onNodeWithContentDescription("Edit").assertExists()
     }
 
     private val androidx.compose.ui.unit.DpRect.width: Float

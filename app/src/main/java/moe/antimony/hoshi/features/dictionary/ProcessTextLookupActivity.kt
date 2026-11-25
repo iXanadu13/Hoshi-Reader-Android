@@ -191,6 +191,7 @@ private fun ProcessTextLookupOverlay(
     val popupSettings = popups.firstOrNull()?.state
     val noAudioFoundText = stringResource(R.string.audio_no_audio_found)
     val audioLoadingText = stringResource(R.string.loading)
+    val audioRefreshText = stringResource(R.string.audio_refresh_all_sources)
     val popupAudioSettings = (popupSettings?.audioSettings ?: AudioSettings()).withLocalizedSourceNames()
     val readerPopupIframeDocument = remember(
         popupAudioSettings,
@@ -206,6 +207,7 @@ private fun ProcessTextLookupOverlay(
         fontFaceCss,
         noAudioFoundText,
         audioLoadingText,
+        audioRefreshText,
     ) {
         LookupPopupHtml.renderIframeDocument(
             assets = null,
@@ -220,6 +222,7 @@ private fun ProcessTextLookupOverlay(
             audioSettings = popupAudioSettings,
             noAudioFoundText = noAudioFoundText,
             audioLoadingText = audioLoadingText,
+            audioRefreshText = audioRefreshText,
             ankiSettings = ankiUiState.popupSettings,
             fontFaceCss = fontFaceCss,
             popupScale = readerSettings.popupScale,
@@ -394,7 +397,7 @@ private fun ProcessTextLookupOverlay(
                     }
                 }
                 is ReaderLookupPopupBridgeMessage.PlayWordAudio -> {
-                    WordAudioPlayer.get(context).play(message.url, message.mode)
+                    WordAudioPlayer.get(context).play(message.url, message.mode, message.term, message.reading)
                 }
                 is ReaderLookupPopupBridgeMessage.MineEntry -> {
                     val popup = popupById(message.popupId) ?: return

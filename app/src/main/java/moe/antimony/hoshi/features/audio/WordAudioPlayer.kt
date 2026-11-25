@@ -1,6 +1,7 @@
 package moe.antimony.hoshi.features.audio
 
 import android.content.Context
+import android.net.Uri
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.Build
@@ -27,6 +28,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.ByteArrayDataSource
+import androidx.media3.datasource.FileDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 
@@ -35,6 +37,8 @@ import androidx.media3.exoplayer.source.ProgressiveMediaSource
 class WordAudioPlayer @Inject constructor(
     @ApplicationContext context: Context,
     private val localAudioRepository: LocalAudioRepository,
+    private val wordAudioCache: WordAudioCache,
+    private val audioHttpClient: UrlConnectionAudioHttpClient,
     @param:ApplicationScope private val applicationScope: CoroutineScope,
 ) {
     private val appContext = context.applicationContext
@@ -45,13 +49,34 @@ class WordAudioPlayer @Inject constructor(
     private var loadJob: Job? = null
     private var generation = 0L
 
-    fun play(url: String, mode: AudioPlaybackMode) {
+    fun play(url: String, mode: AudioPlaybackMode, term: String = "", reading: String = "") {
         stop()
         val request = generation
         loadJob = applicationScope.launch {
             try {
                 val localFile = LocalAudioResolver.parseAudioUrl(url)
                 val data = localFile?.let { localAudioRepository.loadAudio(it) ?: error("Local audio not found.") }
+                val cachedFile = if (localFile == null && term.isNotBlank()) {
+                    try {
+                        wordAudioCache.cachedFile(term, reading, url)
+                            ?: wordAudioCache.getOrDownload(
+                                term = term,
+                                reading = reading,
+                                sourceKey = "",
+                                url = url,
+                            ) {
+                                audioHttpClient.request(url, null)
+                                    .takeIf { it.isSuccessfulAudio() }
+                                    ?.body
+                            }
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        null
+                    }
+                } else {
+                    null
+                }
                 if (request != generation || !requestFocus(mode)) return@launch
                 val nextPlayer = ExoPlayer.Builder(appContext).build()
                 player = nextPlayer
@@ -86,6 +111,14 @@ class WordAudioPlayer @Inject constructor(
                         ByteArrayDataSource(requireNotNull(data))
                     }.createMediaSource(mediaItem)
                     nextPlayer.setMediaSource(mediaSource)
+                } else if (cachedFile != null) {
+                    val mediaItem = MediaItem.Builder()
+                        .setUri(Uri.fromFile(cachedFile))
+                        .setMimeType(LocalAudioResolver.mimeType(cachedFile.name))
+                        .build()
+                    nextPlayer.setMediaSource(
+                        ProgressiveMediaSource.Factory { FileDataSource() }.createMediaSource(mediaItem),
+                    )
                 } else {
                     nextPlayer.setMediaItem(MediaItem.fromUri(url))
                 }
