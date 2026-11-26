@@ -3,9 +3,16 @@ package moe.antimony.hoshi.features.audio
 import java.net.HttpURLConnection
 import java.net.URL
 import javax.inject.Inject
+import kotlin.io.inputStream
+import kotlin.io.outputStream
+import kotlin.toString
 
 class UrlConnectionAudioHttpClient @Inject constructor() : AudioHttpClient {
-    override fun request(url: String, form: Map<String, String>?): AudioHttpResponse {
+    override fun request(url: String, form: Map<String, String>?): AudioHttpResponse = requestAudio(url, form)
+}
+
+internal fun requestAudio(url: String, form: Map<String, String>?): AudioHttpResponse =
+    runCatching {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 4000
             readTimeout = 4000
@@ -23,5 +30,4 @@ class UrlConnectionAudioHttpClient @Inject constructor() : AudioHttpClient {
         } finally {
             connection.disconnect()
         }
-    }
-}
+    }.getOrElse { AudioHttpResponse(url, 599, "", byteArrayOf()) }

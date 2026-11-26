@@ -24,7 +24,7 @@ class AudioRequestHandler(
     private val findLocalAudioCandidates: suspend (term: String, reading: String) -> List<LocalAudioCandidate> =
         localAudioRepository::findAudioCandidates,
     private val wordAudioCache: WordAudioCache? = null,
-    private val fetchRemoteAudio: (String) -> AudioHttpResponse = ::fetchRemoteAudioResponse,
+    private val fetchRemoteAudio: (String) -> AudioHttpResponse = { url -> requestAudio(url, null) },
 ) {
     fun handleAudioRequest(url: String): WebResourceResponse? {
         val body = handleAudioRequestBody(url) ?: return null
@@ -210,22 +210,6 @@ private fun fetchRemoteAudioList(targetUrl: String): ByteArray =
     }.getOrElse {
         """{"type":"audioSourceList","audioSources":[]}""".toByteArray()
     }
-
-private fun fetchRemoteAudioResponse(targetUrl: String): AudioHttpResponse =
-    runCatching {
-        val connection = (URL(targetUrl).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 4000
-            readTimeout = 4000
-            requestMethod = "GET"
-        }
-        try {
-            val status = connection.responseCode
-            val body = if (status in 200..299) connection.inputStream.use { it.readBytes() } else byteArrayOf()
-            AudioHttpResponse(connection.url.toString(), status, connection.contentType.orEmpty(), body)
-        } finally {
-            connection.disconnect()
-        }
-    }.getOrElse { AudioHttpResponse(targetUrl, 599, "", byteArrayOf()) }
 
 private fun String.jsonString(): String =
     buildString {
