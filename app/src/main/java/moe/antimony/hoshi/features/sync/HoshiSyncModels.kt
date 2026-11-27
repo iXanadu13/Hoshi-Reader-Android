@@ -16,6 +16,7 @@ import kotlinx.serialization.json.jsonObject
 import moe.antimony.hoshi.epub.HighlightColor
 import moe.antimony.hoshi.epub.ReaderHighlight
 import moe.antimony.hoshi.epub.ReadingSession
+import moe.antimony.hoshi.features.statistics.LookupStatisticsSession
 import kotlin.math.roundToLong
 
 class SyncFormatError : SerializationException("Unsupported sync format.")
@@ -144,6 +145,16 @@ data class SyncBook(
                     }
                 }
             }
+    }
+}
+
+@Serializable
+data class SyncLookupStatistics(
+    @Required val sessions: Map<String, Timestamped<LookupStatisticsSession?>> = emptyMap(),
+) {
+    companion object {
+        fun merge(first: SyncLookupStatistics, second: SyncLookupStatistics): SyncLookupStatistics =
+            SyncLookupStatistics(SyncBook.mergeRecords(first.sessions, second.sessions))
     }
 }
 

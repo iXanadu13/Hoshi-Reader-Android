@@ -42,6 +42,7 @@ import moe.antimony.hoshi.epub.BookRepository
 import moe.antimony.hoshi.epub.writeBookJson
 import moe.antimony.hoshi.features.bookshelf.BookCoverSource
 import moe.antimony.hoshi.features.bookshelf.toBookCoverSource
+import moe.antimony.hoshi.features.statistics.LookupStatisticsStore
 import moe.antimony.hoshi.ui.UiText
 import moe.antimony.hoshi.ui.ErrorDiagnosticEvents
 import moe.antimony.hoshi.ui.diagnosticMessage
@@ -110,6 +111,8 @@ private class RemoteChanges(val listed: Map<String, List<GoogleDriveFile>>?, val
     }
 }
 
+private const val LOOKUP_STATISTICS_KEY = ".lookup-statistics"
+
 private fun cachedFiles(key: String, versions: Map<String, String>?): Map<String, GoogleDriveFile>? =
     versions?.mapValues { (id, checksum) -> GoogleDriveFile(id, "$key.json", "", checksum, createdTime = "") }
 
@@ -152,6 +155,7 @@ class GoogleDriveSyncManager internal constructor(
     nowMillis: () -> Long = { System.nanoTime() / 1_000_000 },
     private val authorizationRecoveryRequired: suspend () -> Boolean = { false },
     private val completeAuthorizationRecovery: suspend () -> Unit = {},
+    private val lookupStatisticsStore: LookupStatisticsStore? = null,
 ) {
     @Inject constructor(
         store: SyncStorage,
@@ -166,9 +170,10 @@ class GoogleDriveSyncManager internal constructor(
         @ApplicationScope scope: CoroutineScope,
         @MainDispatcher mainDispatcher: CoroutineDispatcher,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
+        lookupStatisticsStore: LookupStatisticsStore,
     ) : this(store, drive, client, settings, books, filesDir, scope, mainDispatcher, ioDispatcher,
         { auth.status(SyncProvider.Gdrive).isLinked }, auth::revokeAccess, ttu::clearCache, fileTransfer,
-        SystemClock::elapsedRealtime, auth::recoveryRequired, auth::completeRecovery)
+        SystemClock::elapsedRealtime, auth::recoveryRequired, auth::completeRecovery, lookupStatisticsStore)
 
     private val mutableState = MutableStateFlow(GoogleDriveSyncState())
     val state = mutableState.asStateFlow()
@@ -233,6 +238,7 @@ class GoogleDriveSyncManager internal constructor(
             settings.settings.collect { scheduler.setLimit(it.transferConcurrency) }
         }
         store.onChange = { scope.launch { schedule() } }
+        lookupStatisticsStore?.onChange = { scope.launch { schedule() } }
         store.syncEnabled = { withContext(mainDispatcher) { enabled() } }
     }
 
@@ -522,15 +528,22 @@ class GoogleDriveSyncManager internal constructor(
             return
         }
         val remote = changes()
+        val lookupHasData = lookupStatisticsStore?.hasData() == true
+        val lookupFiles = when {
+            LOOKUP_STATISTICS_KEY in remote -> remote.files(LOOKUP_STATISTICS_KEY, null).orEmpty()
+            lookupHasData -> drive.children(cache.stateFolder, "$LOOKUP_STATISTICS_KEY.json")
+            else -> emptyList()
+        }
         val pending = store.transaction { store.state.books.filterValues { it.pending }.keys }
         val retry = bookErrors.filter { it.key.second == SyncPhase.State && it.value.cause.isRetryableBackgroundSyncFailure() }.keys.map { it.first }
-        val keys = (remote.changed.keys + remote.listed?.keys.orEmpty() + pending + retry - ".shelves").sorted()
+        val keys = (remote.changed.keys + remote.listed?.keys.orEmpty() + pending + retry - ".shelves" - LOOKUP_STATISTICS_KEY).sorted()
         concurrent(keys) { key ->
             val files = remote.files(key, cache.bookVersions[key])
             recordBook(key, SyncPhase.State, runCatching { syncBook(key, files) }, automatic)
         }
         val failed = keys.any { (it to SyncPhase.State) in bookErrors }
         if (!failed && store.transaction { store.state.books.values.none { !it.attached && !it.deleted } }) {
+            syncLookupStatistics(lookupFiles)
             if (".shelves" in remote || store.state.shelvesPending) syncShelves()
             cache = cache.copy(cursor = remote.cursor)
             mutableState.value = state.value.copy(lastSync = System.currentTimeMillis())
@@ -1193,6 +1206,21 @@ class GoogleDriveSyncManager internal constructor(
             store.setShelvesPending(books.loadShelfList() != merged.shelves)
             store.save()
         }
+    }
+
+    private suspend fun syncLookupStatistics(files: List<GoogleDriveFile>) {
+        val store = lookupStatisticsStore ?: return
+        val remote = readState(files, SyncLookupStatistics::merge)
+        val local = SyncLookupStatistics(store.loadSessions())
+        if (remote == null) {
+            if (local.sessions.values.any { it.value != null }) {
+                writeState(local, "$LOOKUP_STATISTICS_KEY.json", files)
+            }
+            return
+        }
+        val merged = SyncLookupStatistics.merge(remote, local)
+        store.mergeSessions(merged.sessions)
+        if (merged != remote || files.size > 1) writeState(merged, "$LOOKUP_STATISTICS_KEY.json", files)
     }
 
     private suspend fun uploadFile(key: String, fileType: SyncFileType, listing: Listing) {

@@ -8,6 +8,7 @@ Release notes before v1.3.0 are in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).
 ### Added
 
 - Switch Statistics between reading and dictionary lookup metrics, including lookup count, Dictionary-page time, and lookup Daily Goal tracking.
+- Back up dictionary lookup statistics with dictionary backups, TTU exports, and cloud synchronization.
 
 ### Fixed
 

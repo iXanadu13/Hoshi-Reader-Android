@@ -41,6 +41,7 @@ import moe.antimony.hoshi.features.sync.SyncStorage
 import moe.antimony.hoshi.features.sync.TtuProgress
 import moe.antimony.hoshi.features.sync.TtuSyncRules
 import moe.antimony.hoshi.features.sync.resolveTtuCharacterPosition
+import moe.antimony.hoshi.features.statistics.LookupStatisticsStore
 import moe.antimony.hoshi.profiles.ProfileRepository
 
 @Singleton
@@ -51,6 +52,7 @@ class HoshiBackupRepository @Inject constructor(
     private val ttuConverter: TtuBookDataConverter,
     private val profileRepository: ProfileRepository,
     private val syncStorage: SyncStorage,
+    private val lookupStatisticsStore: LookupStatisticsStore,
 ) {
     constructor(filesDir: File) : this(filesDir, Dispatchers.IO)
 
@@ -58,7 +60,7 @@ class HoshiBackupRepository @Inject constructor(
 
     private constructor(filesDir: File, ioDispatcher: CoroutineDispatcher, books: BookRepository) : this(
         filesDir, ioDispatcher, books, createStandaloneTtuConverter(filesDir, ioDispatcher), ProfileRepository(filesDir),
-        SyncStorage(filesDir, books, ioDispatcher),
+        SyncStorage(filesDir, books, ioDispatcher), LookupStatisticsStore(filesDir, ioDispatcher),
     )
 
     suspend fun exportBooks(contentResolver: ContentResolver, uri: Uri) {
@@ -108,6 +110,10 @@ class HoshiBackupRepository @Inject constructor(
             tempRoot.mkdirs()
             try {
                 ZipOutputStream(output.buffered()).use { zip ->
+                    val lookupSessions = lookupStatisticsStore.loadSessions()
+                    if (lookupSessions.values.any { it.value != null }) {
+                        zip.writeText(LookupStatisticsBackupFileName, LookupStatisticsStore.encode(lookupSessions))
+                    }
                     val usedTitleFolders = mutableSetOf<String>()
                     bookRepository.loadBookEntries().forEach { entry ->
                         if (bookRepository.epubFile(entry) == null) return@forEach
@@ -171,6 +177,9 @@ class HoshiBackupRepository @Inject constructor(
             try {
                 archiveFile.outputStream().use { output -> input.copyTo(output) }
                 unzipInto(archiveFile, tempRoot, ::remapTtuRestoreEntryName)
+                tempRoot.resolve(LookupStatisticsBackupFileName).takeIf(File::isFile)?.let { file ->
+                    lookupStatisticsStore.mergeSessions(LookupStatisticsStore.decode(file.readText()))
+                }
                 var restoredCount = 0
                 tempRoot.listFiles().orEmpty().filter(File::isDirectory).forEach { folder ->
                     val files = folder.listFiles().orEmpty()
@@ -376,6 +385,7 @@ class HoshiBackupRepository @Inject constructor(
                     ),
                 )
                 profileRepository.reloadProfilesFromDisk()
+                lookupStatisticsStore.notifyChanged()
             } catch (error: Throwable) {
                 tempDictionaries.deleteRecursively()
                 tempProfiles.deleteRecursively()
@@ -542,6 +552,7 @@ class HoshiBackupRepository @Inject constructor(
 
     private companion object {
         const val LegacyDictionaryConfigEntryName = "config.json"
+        const val LookupStatisticsBackupFileName = "statistics.json"
     }
 }
 

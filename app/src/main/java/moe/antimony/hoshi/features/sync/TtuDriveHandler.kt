@@ -17,6 +17,8 @@ import kotlinx.serialization.json.put
 import dagger.hilt.android.qualifiers.ApplicationContext
 import moe.antimony.hoshi.epub.ReadingStatistics
 import moe.antimony.hoshi.di.CacheDir
+import moe.antimony.hoshi.features.statistics.LookupStatisticsSessions
+import moe.antimony.hoshi.features.statistics.LookupStatisticsStore
 
 @Singleton
 class TtuDriveHandler @Inject constructor(
@@ -116,6 +118,29 @@ class TtuDriveHandler @Inject constructor(
 
     override suspend fun getStatsFile(fileId: String): List<ReadingStatistics> =
         json.decodeFromString(ListSerializer(ReadingStatistics.serializer()), downloadFile(fileId).decodeToString())
+
+    override suspend fun getLookupStatisticsFile(rootFolderId: String): DriveFile? =
+        listFiles(
+            query = "trashed=false and '${rootFolderId.driveQueryLiteral()}' in parents and " +
+                "mimeType != '$FolderMimeType' and name='$LookupStatisticsFileName'",
+            fields = "files(id, name, parents, thumbnailLink)",
+        ).files.firstOrNull()?.toDriveFile()
+
+    override suspend fun getLookupStatistics(fileId: String): LookupStatisticsSessions =
+        LookupStatisticsStore.decode(downloadFile(fileId).decodeToString())
+
+    override suspend fun updateLookupStatisticsFile(
+        rootFolderId: String,
+        fileId: String?,
+        sessions: LookupStatisticsSessions,
+    ) {
+        uploadJsonFile(
+            folderId = rootFolderId,
+            fileId = fileId,
+            name = LookupStatisticsFileName,
+            content = LookupStatisticsStore.encode(sessions).toByteArray(),
+        )
+    }
 
     override suspend fun getAudioBookFile(fileId: String): TtuAudioBook =
         json.decodeFromString(TtuAudioBook.serializer(), downloadFile(fileId).decodeToString())
@@ -353,6 +378,7 @@ class TtuDriveHandler @Inject constructor(
         private const val TitleFolderIdsKey = "titleFolderIds"
         private const val FolderMimeType = "application/vnd.google-apps.folder"
         private const val RootFolderName = "ttu-reader-data"
+        private const val LookupStatisticsFileName = "statistics.json"
         private const val MaxParentsPerSyncFileQuery = 50
     }
 }

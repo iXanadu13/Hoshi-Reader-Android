@@ -11,6 +11,7 @@ import moe.antimony.hoshi.epub.BookRepository
 import moe.antimony.hoshi.epub.Bookmark
 import moe.antimony.hoshi.epub.ReadingStatistics
 import moe.antimony.hoshi.epub.SasayakiPlaybackData
+import moe.antimony.hoshi.features.statistics.LookupStatisticsStore
 import java.io.File
 
 @Singleton
@@ -20,6 +21,7 @@ class TtuSyncManager private constructor(
     private val ioDispatcher: CoroutineDispatcher,
     private val nowUnixMillis: () -> Long,
     private val bookDataExporter: suspend (BookEntry) -> File?,
+    private val lookupStatisticsStore: LookupStatisticsStore?,
 ) {
     @Inject
     constructor(
@@ -27,12 +29,14 @@ class TtuSyncManager private constructor(
         drive: DriveSyncDataSource,
         bookDataConverter: TtuBookDataConverter,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
+        lookupStatisticsStore: LookupStatisticsStore,
     ) : this(
         bookRepository = bookRepository,
         drive = drive,
         ioDispatcher = ioDispatcher,
         nowUnixMillis = { System.currentTimeMillis() },
         bookDataExporter = bookDataConverter::exportBookData,
+        lookupStatisticsStore = lookupStatisticsStore,
     )
 
     constructor(
@@ -44,6 +48,7 @@ class TtuSyncManager private constructor(
         ioDispatcher = Dispatchers.IO,
         nowUnixMillis = { System.currentTimeMillis() },
         bookDataExporter = { error("TTU bookdata export is not configured.") },
+        lookupStatisticsStore = null,
     )
 
     constructor(
@@ -51,12 +56,14 @@ class TtuSyncManager private constructor(
         drive: DriveSyncDataSource,
         nowUnixMillis: () -> Long,
         bookDataExporter: suspend (BookEntry) -> File? = { error("TTU bookdata export is not configured.") },
+        lookupStatisticsStore: LookupStatisticsStore? = null,
     ) : this(
         bookRepository = bookRepository,
         drive = drive,
         ioDispatcher = Dispatchers.IO,
         nowUnixMillis = nowUnixMillis,
         bookDataExporter = bookDataExporter,
+        lookupStatisticsStore = lookupStatisticsStore,
     )
 
     constructor(
@@ -69,6 +76,7 @@ class TtuSyncManager private constructor(
         ioDispatcher = Dispatchers.IO,
         nowUnixMillis = { System.currentTimeMillis() },
         bookDataExporter = bookDataExporter,
+        lookupStatisticsStore = null,
     )
 
     suspend fun syncBook(
@@ -102,6 +110,7 @@ class TtuSyncManager private constructor(
         val displayTitle = entry.displayTitle
 
         val rootFolderId = drive.findRootFolder()
+        if (syncStats) syncLookupStatistics(rootFolderId, importOnly)
         val driveFolderId = drive.ensureBookFolder(
             bookTitle = title,
             rootFolderId = rootFolderId,
@@ -161,6 +170,18 @@ class TtuSyncManager private constructor(
                 syncAudioBook = syncAudioBook,
             )
             SyncDirection.Synced -> SyncResult.Synced(displayTitle)
+        }
+    }
+
+    private suspend fun syncLookupStatistics(rootFolderId: String, importOnly: Boolean) {
+        val store = lookupStatisticsStore ?: return
+        val remoteFile = drive.getLookupStatisticsFile(rootFolderId)
+        val remote = remoteFile?.let { drive.getLookupStatistics(it.id) }.orEmpty()
+        val local = store.loadSessions()
+        val merged = SyncBook.mergeRecords(local, remote)
+        if (remote.isNotEmpty()) store.mergeSessions(remote)
+        if (!importOnly && merged.values.any { it.value != null } && (remoteFile == null || merged != remote)) {
+            drive.updateLookupStatisticsFile(rootFolderId, remoteFile?.id, merged)
         }
     }
 

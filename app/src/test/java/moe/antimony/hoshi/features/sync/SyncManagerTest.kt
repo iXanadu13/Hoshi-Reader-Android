@@ -8,6 +8,9 @@ import moe.antimony.hoshi.epub.BookRepository
 import moe.antimony.hoshi.epub.Bookmark
 import moe.antimony.hoshi.epub.ReadingStatistics
 import moe.antimony.hoshi.epub.SasayakiPlaybackData
+import moe.antimony.hoshi.features.statistics.LookupStatisticsSession
+import moe.antimony.hoshi.features.statistics.LookupStatisticsSessions
+import moe.antimony.hoshi.features.statistics.LookupStatisticsStore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -62,6 +65,34 @@ class SyncManagerTest {
             SasayakiPlaybackData(lastPosition = 88.5, delay = 0.2, rate = 1.5f, audioUri = "content://audio"),
             repository.loadSasayakiPlayback(entry.root)?.copy(modified = null),
         )
+    }
+
+    @Test
+    fun importFromTtuMergesGlobalLookupStatistics() = runBlocking {
+        val repository = BookRepository(tempFolder.root)
+        val entry = repository.createEntry()
+        val remoteLookup = LookupStatisticsSession(1_000, 3_000, 2)
+        val drive = FakeDriveSyncDataSource(
+            progress = TtuProgress(7, 150, 0.5, 2_000),
+            lookupStatistics = mapOf("remote" to Timestamped(3_000, remoteLookup)),
+        )
+        val lookupStore = LookupStatisticsStore(tempFolder.root, kotlinx.coroutines.Dispatchers.IO)
+        val manager = TtuSyncManager(
+            repository,
+            drive,
+            nowUnixMillis = { 9_999 },
+            lookupStatisticsStore = lookupStore,
+        )
+
+        manager.syncBook(
+            entry = entry,
+            direction = SyncDirection.ImportFromTtu,
+            syncStats = true,
+            statsSyncMode = StatisticsSyncMode.Merge,
+            syncAudioBook = false,
+        )
+
+        assertEquals(listOf(2), lookupStore.loadSessions().values.mapNotNull { it.value }.map { it.lookupCount })
     }
 
     @Test
@@ -471,6 +502,7 @@ private class FakeDriveSyncDataSource(
     progress: TtuProgress? = null,
     statistics: List<ReadingStatistics>? = null,
     audioBook: TtuAudioBook? = null,
+    private val lookupStatistics: LookupStatisticsSessions? = null,
     private val bookData: DriveFile? = null,
     private val staleOnFirstList: Boolean = false,
     private val bookDataUploadError: Throwable? = null,
@@ -484,6 +516,7 @@ private class FakeDriveSyncDataSource(
     private val progressById = progressFile?.let { mapOf(it.id to requireNotNull(progress)) }.orEmpty()
     private val statisticsById = statisticsFile?.let { mapOf(it.id to requireNotNull(statistics)) }.orEmpty()
     private val audioBookById = audioBookFile?.let { mapOf(it.id to requireNotNull(audioBook)) }.orEmpty()
+    private val lookupStatisticsFile = lookupStatistics?.let { DriveFile("lookup", "statistics.json") }
 
     var clearCacheCalls = 0
     var listSyncFilesCalls = 0
@@ -530,6 +563,16 @@ private class FakeDriveSyncDataSource(
         audioBookFetchError?.let { throw it }
         return audioBookById.getValue(fileId)
     }
+
+    override suspend fun getLookupStatisticsFile(rootFolderId: String): DriveFile? = lookupStatisticsFile
+
+    override suspend fun getLookupStatistics(fileId: String): LookupStatisticsSessions = requireNotNull(lookupStatistics)
+
+    override suspend fun updateLookupStatisticsFile(
+        rootFolderId: String,
+        fileId: String?,
+        sessions: LookupStatisticsSessions,
+    ) = Unit
 
     override suspend fun updateProgressFile(folderId: String, fileId: String?, progress: TtuProgress) {
         assertEquals("book-folder", folderId)

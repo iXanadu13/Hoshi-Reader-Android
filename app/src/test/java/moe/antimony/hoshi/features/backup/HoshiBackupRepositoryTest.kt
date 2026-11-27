@@ -12,7 +12,10 @@ import moe.antimony.hoshi.epub.EpubBookParser
 import moe.antimony.hoshi.epub.ReadingStatistics
 import moe.antimony.hoshi.epub.SasayakiPlaybackData
 import moe.antimony.hoshi.epub.writeMinimalExtractedEpub
+import moe.antimony.hoshi.features.statistics.LookupStatisticsSession
+import moe.antimony.hoshi.features.statistics.LookupStatisticsStore
 import moe.antimony.hoshi.profiles.ProfileRepository
+import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -381,6 +384,25 @@ class HoshiBackupRepositoryTest {
     }
 
     @Test
+    fun dictionaryBackupIncludesGlobalLookupStatistics() = runBlocking {
+        val sourceDir = Files.createTempDirectory("hoshi-dictionaries-lookup-source").toFile()
+        LookupStatisticsStore(sourceDir, Dispatchers.IO).append(LookupStatisticsSession(1_000, 3_000, 2))
+        val output = ByteArrayOutputStream()
+
+        HoshiBackupRepository(sourceDir).exportDictionaries(output)
+
+        val archive = output.toByteArray()
+        assertTrue(zipEntryNames(archive).contains("statistics.json"))
+        val targetDir = Files.createTempDirectory("hoshi-dictionaries-lookup-target").toFile()
+        HoshiBackupRepository(targetDir).restoreDictionaries(ByteArrayInputStream(archive))
+
+        assertEquals(
+            listOf(2),
+            LookupStatisticsStore(targetDir, Dispatchers.IO).loadSessions().values.mapNotNull { it.value }.map { it.lookupCount },
+        )
+    }
+
+    @Test
     fun exportDictionariesAddsProfilePayloadAndLegacyDefaultConfigWithoutTopLevelFolder() = runBlocking {
         val sourceDir = Files.createTempDirectory("hoshi-dictionaries-profile-backup-source").toFile()
         val profileRepository = ProfileRepository(sourceDir)
@@ -541,6 +563,7 @@ class HoshiBackupRepositoryTest {
         val sourceDir = Files.createTempDirectory("hoshi-ttu-backup-source").toFile()
         val sourceRepository = BookRepository(sourceDir)
         val sourceEntry = sourceRepository.createPackedTestBook("TTU Book")
+        LookupStatisticsStore(sourceDir, Dispatchers.IO).append(LookupStatisticsSession(1_000, 3_000, 2))
         sourceRepository.saveBookmark(sourceEntry.root, Bookmark(0, 0.5, 5, 10.0))
         sourceRepository.saveStatistics(
             sourceEntry.root,
@@ -554,6 +577,7 @@ class HoshiBackupRepositoryTest {
         assertTrue(entries.any { it.startsWith("TTU Book/bookdata_") && it.endsWith(".zip") })
         assertTrue(entries.any { it.startsWith("TTU Book/progress_") && it.endsWith(".json") })
         assertTrue(entries.any { it.startsWith("TTU Book/statistics_") && it.endsWith(".json") })
+        assertTrue(entries.contains("statistics.json"))
 
         val targetDir = Files.createTempDirectory("hoshi-ttu-backup-target").toFile()
         val targetRepository = BookRepository(targetDir)
@@ -564,6 +588,10 @@ class HoshiBackupRepositoryTest {
         assertTrue(restored.root.resolve(restored.metadata.epub!!).isFile)
         assertEquals(5, targetRepository.loadBookmark(restored.root)?.characterCount)
         assertEquals(5, targetRepository.loadStatistics(restored.root).single().charactersRead)
+        assertEquals(
+            listOf(2),
+            LookupStatisticsStore(targetDir, Dispatchers.IO).loadSessions().values.mapNotNull { it.value }.map { it.lookupCount },
+        )
     }
 
     @Test

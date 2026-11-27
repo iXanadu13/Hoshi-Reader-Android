@@ -1,6 +1,7 @@
 package moe.antimony.hoshi.features.sync
 
 import moe.antimony.hoshi.epub.ReadingStatistics
+import moe.antimony.hoshi.features.statistics.LookupStatisticsSessions
 import java.io.File
 
 interface DriveSyncDataSource {
@@ -49,6 +50,16 @@ interface DriveSyncDataSource {
     suspend fun updateProgressFile(folderId: String, fileId: String?, progress: TtuProgress)
 
     suspend fun updateStatsFile(folderId: String, fileId: String?, stats: List<ReadingStatistics>)
+
+    suspend fun getLookupStatisticsFile(rootFolderId: String): DriveFile? = null
+
+    suspend fun getLookupStatistics(fileId: String): LookupStatisticsSessions = emptyMap()
+
+    suspend fun updateLookupStatisticsFile(
+        rootFolderId: String,
+        fileId: String?,
+        sessions: LookupStatisticsSessions,
+    ) = Unit
 
     suspend fun updateAudioBookFile(folderId: String, fileId: String?, audioBook: TtuAudioBook)
 
