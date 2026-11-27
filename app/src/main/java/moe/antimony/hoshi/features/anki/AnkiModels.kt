@@ -110,6 +110,7 @@ data class AnkiSettings(
     val checkDuplicatesAcrossAllModels: Boolean = false,
     val duplicateScope: AnkiDuplicateScope = AnkiDuplicateScope.Collection,
     val compactGlossaries: Boolean = false,
+    val hideAnkiActions: Boolean = false,
     val disableShowNotes: Boolean = false,
     val selectedGlossaryFallback: String = "",
     val showAllHandlebars: Boolean = false,
@@ -235,6 +236,7 @@ data class AnkiPopupSettings(
     val allowDupes: Boolean = false,
     val preventAccidentalDuplicates: Boolean = false,
     val compactGlossaries: Boolean = false,
+    val hideAnkiActions: Boolean = false,
     val disableShowNotes: Boolean = false,
     val excludedDictionaries: List<String> = emptyList(),
 )

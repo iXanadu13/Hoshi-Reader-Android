@@ -253,6 +253,7 @@ class LookupPopupHtmlTest {
                 formats = listOf(AnkiPopupFormat("format-a", AnkiFormatIcon.CircleSmall, true)),
                 isBackendAvailable = true,
                 useAnkiConnect = true,
+                hideAnkiActions = true,
                 disableShowNotes = true,
             ),
             audioSettings = AudioSettings(
@@ -262,6 +263,7 @@ class LookupPopupHtmlTest {
         )
 
         assertTrue(html.contains("window.useAnkiConnect = true;"))
+        assertTrue(html.contains("window.hideAnkiActions = true;"))
         assertTrue(html.contains("window.ankiFormats = [{\"id\":\"format-a\",\"icon\":\"circle-small\",\"isValid\":true}];"))
         assertTrue(html.contains("window.disableShowNotes = true;"))
         assertTrue(html.contains("showNotes: { postMessage:"))

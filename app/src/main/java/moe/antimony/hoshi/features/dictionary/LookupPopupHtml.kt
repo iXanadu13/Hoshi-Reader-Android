@@ -229,6 +229,7 @@ internal object LookupPopupHtml {
                     window.excludedDictionaries = ${dictionaryNamesJson(ankiSettings.excludedDictionaries.toSet())};
                     window.ankiFormats = ${ankiFormatsJson(ankiSettings)};
                     window.ankiBackendAvailable = ${ankiSettings.isBackendAvailable};
+                    window.hideAnkiActions = ${ankiSettings.hideAnkiActions};
                     window.disableShowNotes = ${ankiSettings.disableShowNotes};
                     window.customCSS = ${JsonPrimitive(normalizedSettings.customCSS)};
                     window.swipeThreshold = $effectiveSwipeThreshold;

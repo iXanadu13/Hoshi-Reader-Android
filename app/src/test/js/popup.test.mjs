@@ -868,6 +868,21 @@ test('popup renders ordered format buttons with independent icon and disabled st
     assert.match(mineButtons[2].style.properties.get('--button-icon-url'), /diamond\.svg/);
 });
 
+test('popup hides all Anki buttons when configured', () => {
+    const { context } = popupContext();
+    context.window.hideAnkiActions = true;
+    context.window.ankiFormats = [
+        { id: 'word', icon: 'square', isValid: true },
+        { id: 'sentence', icon: 'circle', isValid: true },
+    ];
+    const container = new FakeElement();
+
+    const formats = context.appendAnkiFormatButtons(container, 0);
+
+    assert.equal(formats.length, 0);
+    assert.equal(container.children.length, 0);
+});
+
 test('popup places Anki formats before audio and keeps each notes action with its format', async () => {
     const { context } = popupContext({
         duplicateStates: { word: true, sentence: true },

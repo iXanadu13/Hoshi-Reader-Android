@@ -2130,6 +2130,7 @@ async function showNotesAtIndex(entryIndex, formatId) {
 }
 
 function appendAnkiFormatButtons(container, entryIndex) {
+    if (window.hideAnkiActions) return [];
     const formats = Array.isArray(window.ankiFormats) ? window.ankiFormats : [];
     formats.forEach((format, index) => {
         const placement = index === 0 ? 'leading' : 'above';
@@ -2184,6 +2185,7 @@ function syncShowNotesButton(container, entryIndex, format, visible) {
 }
 
 async function refreshAnkiDuplicateStates(entryIndex, buttonsContainer, entry = window.lookupEntries?.[entryIndex]) {
+    if (window.hideAnkiActions) return true;
     const formats = Array.isArray(window.ankiFormats) ? window.ankiFormats : [];
     if (!entry) return false;
     let states;

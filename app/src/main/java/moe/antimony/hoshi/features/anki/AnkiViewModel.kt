@@ -115,6 +115,7 @@ data class AnkiUiState(
                 allowDupes = settings.allowDupes,
                 preventAccidentalDuplicates = settings.allowDupes && settings.preventAccidentalDuplicates,
                 compactGlossaries = settings.compactGlossaries,
+                hideAnkiActions = settings.hideAnkiActions,
                 disableShowNotes = settings.disableShowNotes,
                 excludedDictionaries = excludedDictionaries,
             )
@@ -515,6 +516,10 @@ internal class AnkiViewModel @Inject constructor(
 
     fun updateDisableShowNotes(value: Boolean) {
         viewModelScope.launch { repository.updateSettings { it.copy(disableShowNotes = value) } }
+    }
+
+    fun updateHideAnkiActions(value: Boolean) {
+        viewModelScope.launch { repository.updateSettings { it.copy(hideAnkiActions = value) } }
     }
 
     fun updateSelectedGlossaryFallback(value: String) {

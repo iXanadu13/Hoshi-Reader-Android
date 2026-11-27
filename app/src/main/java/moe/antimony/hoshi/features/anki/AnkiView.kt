@@ -255,6 +255,12 @@ fun AnkiView(
                     }
                     AnkiDivider()
                     AnkiSwitchRow(
+                        label = stringResource(R.string.anki_hide_actions),
+                        checked = uiState.settings.hideAnkiActions,
+                        onCheckedChange = viewModel::updateHideAnkiActions,
+                    )
+                    AnkiDivider()
+                    AnkiSwitchRow(
                         label = stringResource(R.string.anki_disable_show_notes),
                         checked = uiState.settings.disableShowNotes,
                         onCheckedChange = viewModel::updateDisableShowNotes,
