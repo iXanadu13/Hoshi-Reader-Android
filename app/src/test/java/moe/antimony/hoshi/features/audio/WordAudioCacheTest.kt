@@ -27,13 +27,16 @@ class WordAudioCacheTest {
             assertEquals(listOf(jpodUrl), cache.cachedCandidates("猫", "ねこ", "jpod101").map { it.url })
             assertEquals(listOf(jishoUrl), cache.cachedCandidates("猫", "ねこ", "jisho").map { it.url })
             assertEquals(1, cache.state.value.cachedWordCount)
+            assertEquals(2L, cache.state.value.cachedAudioSizeBytes)
 
             cache.clearSource("猫", "ねこ", "jpod101")
             assertTrue(cache.cachedCandidates("猫", "ねこ", "jpod101").isEmpty())
             assertEquals(listOf(jishoUrl), cache.cachedCandidates("猫", "ねこ", "jisho").map { it.url })
+            assertEquals(1L, cache.state.value.cachedAudioSizeBytes)
 
             cache.clearAll()
             assertEquals(0, cache.state.value.cachedWordCount)
+            assertEquals(0L, cache.state.value.cachedAudioSizeBytes)
             assertNull(cache.cachedFile("猫", "ねこ", jishoUrl))
         } finally {
             scope.cancel()

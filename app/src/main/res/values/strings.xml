@@ -558,6 +558,7 @@
     <string name="audio_cache_word_limit">Cached word limit</string>
     <string name="audio_cache_word_limit_hint">Currently cached words: %1$d</string>
     <string name="audio_cache_clear">Clear cached word audio</string>
+    <string name="audio_cache_size_hint">Current cached audio size: %1$s</string>
     <string name="audio_cache_clear_confirm_title">Clear cached word audio?</string>
     <string name="audio_cache_clear_confirm_text">All downloaded word audio will be removed. It can be downloaded again when needed.</string>
     <string name="audio_local_audio">Local Audio</string>

@@ -556,6 +556,7 @@
     <string name="audio_cache_word_limit">缓存单词上限</string>
     <string name="audio_cache_word_limit_hint">当前已缓存单词：%1$d</string>
     <string name="audio_cache_clear">清除已缓存单词音频</string>
+    <string name="audio_cache_size_hint">当前已缓存音频占用空间：%1$s</string>
     <string name="audio_cache_clear_confirm_title">清除已缓存的单词音频？</string>
     <string name="audio_cache_clear_confirm_text">所有已下载的单词音频都会被删除，需要时可以重新下载。</string>
     <string name="audio_local_audio">本地音频</string>

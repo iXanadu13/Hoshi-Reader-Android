@@ -27,6 +27,7 @@ internal const val DefaultWordAudioCacheLimit = 100
 
 data class WordAudioCacheState(
     val cachedWordCount: Int = 0,
+    val cachedAudioSizeBytes: Long = 0L,
     val maxWordCount: Int = DefaultWordAudioCacheLimit,
 )
 
@@ -92,6 +93,7 @@ class WordAudioCache internal constructor(
                 val stale = index.entries.filter { it.wordKey == wordKey && !fileFor(it).isFile }
                 if (stale.isNotEmpty()) {
                     index = index.copy(entries = index.entries - stale.toSet())
+                    publishStateLocked()
                 }
                 if (matching.isNotEmpty()) {
                     val now = nextAccessTimeLocked()
@@ -116,6 +118,7 @@ class WordAudioCache internal constructor(
                     if (entry != null) {
                         index = index.copy(entries = index.entries - entry)
                         persistLocked()
+                        publishStateLocked()
                     }
                     null
                 } else {
@@ -363,8 +366,13 @@ class WordAudioCache internal constructor(
     }
 
     private fun publishStateLocked() {
+        val existingEntries = index.entries.filter { fileFor(it).isFile }
         mutableState.value = WordAudioCacheState(
-            cachedWordCount = index.entries.mapTo(mutableSetOf()) { it.wordKey }.size,
+            cachedWordCount = existingEntries.mapTo(mutableSetOf()) { it.wordKey }.size,
+            cachedAudioSizeBytes = existingEntries
+                .map(::fileFor)
+                .distinctBy(File::getAbsolutePath)
+                .sumOf(File::length),
             maxWordCount = index.maxWordCount,
         )
     }

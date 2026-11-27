@@ -291,6 +291,14 @@ fun AudioSettingsView(
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             headlineContent = { Text(stringResource(R.string.audio_cache_clear)) },
+                            supportingContent = {
+                                Text(
+                                    stringResource(
+                                        R.string.audio_cache_size_hint,
+                                        Formatter.formatFileSize(context, audioCacheState.cachedAudioSizeBytes),
+                                    ),
+                                )
+                            },
                             trailingContent = {
                                 OutlinedButton(
                                     enabled = !isClearingCache,
