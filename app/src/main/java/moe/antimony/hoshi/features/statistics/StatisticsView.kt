@@ -52,7 +52,9 @@ internal fun StatisticsView(
     val lifecycleOwner = LocalLifecycleOwner.current
     val scrollState = rememberScrollState()
     val heatmapScrollState = rememberLazyListState()
+    val lookupHeatmapScrollState = rememberLazyListState()
     var heatmapInitiallyScrolled by rememberSaveable { mutableStateOf(false) }
+    var lookupHeatmapInitiallyScrolled by rememberSaveable { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner, viewModel) {
         val observer = StatisticsLifecycleReloader(viewModel::reload)
@@ -97,6 +99,22 @@ internal fun StatisticsView(
                 ),
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
+            CenteredStatisticsColumn(layoutSpec = layoutSpec) {
+                StatisticsSegmentedControl(
+                    options = listOf(
+                        StatisticsSegmentedOption(
+                            StatisticsMetricMode.Reading,
+                            stringResource(R.string.statistics_metric_reading),
+                        ),
+                        StatisticsSegmentedOption(
+                            StatisticsMetricMode.Lookup,
+                            stringResource(R.string.statistics_metric_lookup),
+                        ),
+                    ),
+                    selected = uiState.metric,
+                    onSelect = { viewModel.onEvent(StatisticsEvent.SelectMetricMode(it)) },
+                )
+            }
             if (uiState.emptyState?.hasPartialReadError == true) {
                 CenteredStatisticsColumn(layoutSpec = layoutSpec) {
                     Text(
@@ -106,34 +124,60 @@ internal fun StatisticsView(
                     )
                 }
             }
-            CenteredStatisticsColumn(layoutSpec = layoutSpec) {
-                TodayStatisticsSection(
-                    today = uiState.today,
-                    settings = uiState.settings.values,
-                    history = uiState.history,
-                    heatmap = uiState.heatmap,
-                    heatmapScrollState = heatmapScrollState,
-                    heatmapInitiallyScrolled = heatmapInitiallyScrolled,
-                    onHeatmapInitiallyScrolled = { heatmapInitiallyScrolled = true },
-                    targetEditor = uiState.settings,
-                    onEvent = viewModel::onEvent,
-                )
-            }
-            CenteredStatisticsColumn(layoutSpec = layoutSpec) {
-                StatisticsReadingTimeSection(
-                    currentRange = uiState.currentRange,
-                    today = uiState.today.date,
-                    onEvent = viewModel::onEvent,
-                )
-            }
-            if (uiState.currentRange.distributionRows.isNotEmpty()) {
-                CenteredStatisticsColumn(layoutSpec = layoutSpec) {
-                    StatisticsBooksSection(
-                        rows = uiState.currentRange.distributionRows,
-                        range = uiState.currentRange.range,
-                        selectedBucket = uiState.currentRange.selectedBucket,
-                        onOpenBook = onOpenBook,
-                    )
+            when (uiState.metric) {
+                StatisticsMetricMode.Reading -> {
+                    CenteredStatisticsColumn(layoutSpec = layoutSpec) {
+                        TodayStatisticsSection(
+                            today = uiState.today,
+                            settings = uiState.settings.values,
+                            history = uiState.history,
+                            heatmap = uiState.heatmap,
+                            heatmapScrollState = heatmapScrollState,
+                            heatmapInitiallyScrolled = heatmapInitiallyScrolled,
+                            onHeatmapInitiallyScrolled = { heatmapInitiallyScrolled = true },
+                            targetEditor = uiState.settings,
+                            onEvent = viewModel::onEvent,
+                        )
+                    }
+                    CenteredStatisticsColumn(layoutSpec = layoutSpec) {
+                        StatisticsReadingTimeSection(
+                            currentRange = uiState.currentRange,
+                            today = uiState.today.date,
+                            onEvent = viewModel::onEvent,
+                        )
+                    }
+                    if (uiState.currentRange.distributionRows.isNotEmpty()) {
+                        CenteredStatisticsColumn(layoutSpec = layoutSpec) {
+                            StatisticsBooksSection(
+                                rows = uiState.currentRange.distributionRows,
+                                range = uiState.currentRange.range,
+                                selectedBucket = uiState.currentRange.selectedBucket,
+                                onOpenBook = onOpenBook,
+                            )
+                        }
+                    }
+                }
+                StatisticsMetricMode.Lookup -> {
+                    CenteredStatisticsColumn(layoutSpec = layoutSpec) {
+                        TodayLookupStatisticsSection(
+                            today = uiState.lookupToday,
+                            settings = uiState.lookupSettings.values,
+                            history = uiState.lookupHistory,
+                            heatmap = uiState.lookupHeatmap,
+                            heatmapScrollState = lookupHeatmapScrollState,
+                            heatmapInitiallyScrolled = lookupHeatmapInitiallyScrolled,
+                            onHeatmapInitiallyScrolled = { lookupHeatmapInitiallyScrolled = true },
+                            targetEditor = uiState.lookupSettings,
+                            onEvent = viewModel::onEvent,
+                        )
+                    }
+                    CenteredStatisticsColumn(layoutSpec = layoutSpec) {
+                        StatisticsLookupTimeSection(
+                            currentRange = uiState.lookupRange,
+                            today = uiState.lookupToday.date,
+                            onEvent = viewModel::onEvent,
+                        )
+                    }
                 }
             }
         }

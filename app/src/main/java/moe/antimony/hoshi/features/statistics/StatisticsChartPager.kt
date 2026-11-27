@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.filterNotNull
 /** Both button navigation and swipes commit the same settled page to the dashboard. */
 @Composable
 internal fun rememberStatisticsChartPagerState(
-    range: CurrentRangeStatisticsUi,
+    range: StatisticsChartRange,
     onSelectPage: (Int) -> Unit,
 ): PagerState = key(range.mode, range.pageCount) {
     val pager = rememberPagerState(initialPage = range.selectedPage, pageCount = { range.pageCount })
@@ -39,7 +39,7 @@ internal fun rememberStatisticsChartPagerState(
 
 @Composable
 internal fun StatisticsChartPager(
-    range: CurrentRangeStatisticsUi,
+    range: StatisticsChartRange,
     pager: PagerState,
     today: LocalDate,
     onSelectBucket: (String?) -> Unit,

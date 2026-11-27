@@ -76,6 +76,34 @@ internal fun overviewRangeSummary(
     )
 }
 
+internal fun overviewLookupRangeSummary(
+    days: List<LookupStatisticsDay>,
+    mode: StatisticsRangeMode,
+    anchor: LocalDate,
+    today: LocalDate,
+    locale: Locale = Locale.getDefault(),
+): LookupRangeSummary {
+    val activity = days.filter { !it.date.isAfter(today) && it.isActive }
+    val firstActivity = activity.minOfOrNull { it.date }
+    fun period(reference: LocalDate): Pair<LookupRangeSummary, Double> {
+        val range = selectedStatisticsRange(mode, reference, today, firstActivity, locale)
+        val summary = aggregateLookupRange(activity.filter { range.contains(it.date) })
+        val elapsedEnd = minOf(range.end, today)
+        val count = when (mode) {
+            StatisticsRangeMode.Year, StatisticsRangeMode.All ->
+                ChronoUnit.MONTHS.between(YearMonth.from(range.start), YearMonth.from(elapsedEnd)) + 1
+            else -> ChronoUnit.DAYS.between(range.start, elapsedEnd) + 1
+        }.coerceAtLeast(1)
+        return summary to summary.lookupSeconds / count
+    }
+    val (summary, average) = period(anchor)
+    val previous = shiftedStatisticsAnchor(mode, anchor, -1, locale)?.let { period(it).second }
+    return summary.copy(
+        averageLookupSecondsPerBucket = average,
+        averageLookupTimeChangePercent = previous?.takeIf { it > 0.0 }?.let { (average - it) / it * 100.0 },
+    )
+}
+
 internal fun statisticsHistorySummary(
     days: List<StatisticsDayAggregate>,
     today: LocalDate,
@@ -105,6 +133,35 @@ internal fun statisticsHistorySummary(
     return StatisticsHistoryUi(current, longest, metDays, activity.size, best)
 }
 
+internal fun lookupHistorySummary(
+    days: List<LookupStatisticsDay>,
+    today: LocalDate,
+    settings: StatisticsTargetSettings,
+): LookupHistoryUi {
+    val activity = days.filter { !it.date.isAfter(today) && it.isActive }.sortedBy { it.date }
+    var current = StatisticsGoalStreak()
+    var longest = StatisticsGoalStreak()
+    var metDays = 0
+    activity.filter { it.lookupTargetRatio(settings) >= 1.0 }.forEach { day ->
+        metDays += 1
+        val previousRange = current.range
+        current = if (previousRange?.end?.plusDays(1) == day.date) {
+            StatisticsGoalStreak(current.count + 1, StatisticsDateRange(previousRange.start, day.date))
+        } else {
+            StatisticsGoalStreak(1, StatisticsDateRange(day.date, day.date))
+        }
+        if (current.count > longest.count) longest = current
+    }
+    if (current.range?.end?.let { it < today.minusDays(1) } != false) current = StatisticsGoalStreak()
+    val best = activity.maxByOrNull { day ->
+        when (settings.dailyLookupTargetType) {
+            LookupTargetType.Count -> day.lookupCount.toDouble()
+            LookupTargetType.Duration -> day.lookupSeconds
+        }
+    }
+    return LookupHistoryUi(current, longest, metDays, activity.size, best)
+}
+
 internal fun StatisticsDayAggregate.targetRatio(settings: StatisticsTargetSettings): Double =
     when (settings.dailyTargetType) {
         DailyTargetType.Characters -> if (settings.dailyCharacterTarget > 0) {
@@ -115,6 +172,19 @@ internal fun StatisticsDayAggregate.targetRatio(settings: StatisticsTargetSettin
         DailyTargetType.Duration -> {
             val targetSeconds = settings.dailyDurationTargetMinutes * 60.0
             if (targetSeconds > 0.0) readingSeconds / targetSeconds else 0.0
+        }
+    }
+
+internal fun LookupStatisticsDay.lookupTargetRatio(settings: StatisticsTargetSettings): Double =
+    when (settings.dailyLookupTargetType) {
+        LookupTargetType.Count -> if (settings.dailyLookupCountTarget > 0) {
+            lookupCount.toDouble() / settings.dailyLookupCountTarget.toDouble()
+        } else {
+            0.0
+        }
+        LookupTargetType.Duration -> {
+            val targetSeconds = settings.dailyLookupDurationTargetMinutes * 60.0
+            if (targetSeconds > 0.0) lookupSeconds / targetSeconds else 0.0
         }
     }
 
@@ -140,6 +210,12 @@ internal fun aggregateRange(
     )
 }
 
+internal fun aggregateLookupRange(days: List<LookupStatisticsDay>): LookupRangeSummary =
+    LookupRangeSummary(
+        totalLookups = days.sumOf { it.lookupCount },
+        lookupSeconds = days.sumOf { it.lookupSeconds },
+    )
+
 internal fun todaySummary(
     daysByDate: Map<LocalDate, StatisticsDayAggregate>,
     today: LocalDate,
@@ -154,6 +230,38 @@ internal fun todaySummary(
         averageSpeedPerHour = averageSpeedPerHour(aggregate.totalCharacters, aggregate.readingSeconds),
         dailyStreakDays = dailyGoalStreak(daysByDate, today, settings),
     )
+}
+
+internal fun todayLookupSummary(
+    daysByDate: Map<LocalDate, LookupStatisticsDay>,
+    today: LocalDate,
+): TodayLookupStatisticsUi {
+    val aggregate = daysByDate[today]
+    return TodayLookupStatisticsUi(
+        date = today,
+        lookupCount = aggregate?.lookupCount ?: 0,
+        lookupSeconds = aggregate?.lookupSeconds ?: 0.0,
+    )
+}
+
+internal fun lookupDailyGoalProgress(
+    today: TodayLookupStatisticsUi,
+    settings: StatisticsTargetSettings,
+): Float = todayLookupTargetRatio(today, settings).toFloat().coerceIn(0f, 1f)
+
+private fun todayLookupTargetRatio(
+    today: TodayLookupStatisticsUi,
+    settings: StatisticsTargetSettings,
+): Double = when (settings.dailyLookupTargetType) {
+    LookupTargetType.Count -> if (settings.dailyLookupCountTarget > 0) {
+        today.lookupCount.toDouble() / settings.dailyLookupCountTarget.toDouble()
+    } else {
+        0.0
+    }
+    LookupTargetType.Duration -> {
+        val targetSeconds = settings.dailyLookupDurationTargetMinutes * 60.0
+        if (targetSeconds > 0.0) today.lookupSeconds / targetSeconds else 0.0
+    }
 }
 
 internal fun dailyGoalStreak(
@@ -206,6 +314,43 @@ internal fun trendPoints(
                     key = date.toString(),
                     characters = day?.totalCharacters ?: 0,
                     readingSeconds = day?.readingSeconds ?: 0.0,
+                )
+            }.toList()
+        }
+    }
+
+internal fun lookupTrendPoints(
+    rangeMode: StatisticsRangeMode,
+    range: StatisticsDateRange,
+    days: List<LookupStatisticsDay>,
+): List<StatisticsTrendPoint> =
+    when (rangeMode) {
+        StatisticsRangeMode.Year, StatisticsRangeMode.All -> {
+            val daysByMonth = days.filter { range.contains(it.date) }.groupBy { YearMonth.from(it.date) }
+            val startMonth = YearMonth.from(range.start)
+            val endMonth = YearMonth.from(range.end)
+            generateSequence(startMonth) { month ->
+                month.plusMonths(1).takeIf { !it.isAfter(endMonth) }
+            }.map { month ->
+                val groupedDays = daysByMonth[month].orEmpty()
+                StatisticsTrendPoint(
+                    key = month.toString(),
+                    characters = groupedDays.sumOf { it.lookupCount },
+                    readingSeconds = groupedDays.sumOf { it.lookupSeconds },
+                )
+            }.toList()
+        }
+        StatisticsRangeMode.Month,
+        StatisticsRangeMode.Week -> {
+            val daysByDate = days.associateBy { it.date }
+            generateSequence(range.start) { date ->
+                date.plusDays(1).takeIf { !it.isAfter(range.end) }
+            }.map { date ->
+                val day = daysByDate[date]
+                StatisticsTrendPoint(
+                    key = date.toString(),
+                    characters = day?.lookupCount ?: 0,
+                    readingSeconds = day?.lookupSeconds ?: 0.0,
                 )
             }.toList()
         }
@@ -305,6 +450,18 @@ internal fun readingHeatLevels(days: List<StatisticsDayAggregate>): Map<LocalDat
     val levelByCharacters = activeCharacterValues.adaptiveHeatLevels()
     return days.associate { day ->
         day.date to (levelByCharacters[day.totalCharacters] ?: 0)
+    }
+}
+
+internal fun lookupHeatLevels(days: List<LookupStatisticsDay>): Map<LocalDate, Int> {
+    val activeLookupValues = days
+        .map { day -> day.lookupCount }
+        .filter { count -> count > 0 }
+        .distinct()
+        .sorted()
+    val levelByLookups = activeLookupValues.adaptiveHeatLevels()
+    return days.associate { day ->
+        day.date to (levelByLookups[day.lookupCount] ?: 0)
     }
 }
 

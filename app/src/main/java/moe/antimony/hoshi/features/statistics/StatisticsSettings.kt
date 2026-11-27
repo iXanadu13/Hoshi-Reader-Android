@@ -22,6 +22,9 @@ internal class StatisticsSettingsRepository(
             preferences[KEY_DAILY_TARGET_TYPE] = next.dailyTargetType.name
             preferences[KEY_DAILY_CHARACTER_TARGET] = next.dailyCharacterTarget
             preferences[KEY_DAILY_DURATION_TARGET_MINUTES] = next.dailyDurationTargetMinutes
+            preferences[KEY_DAILY_LOOKUP_TARGET_TYPE] = next.dailyLookupTargetType.name
+            preferences[KEY_DAILY_LOOKUP_COUNT_TARGET] = next.dailyLookupCountTarget
+            preferences[KEY_DAILY_LOOKUP_DURATION_TARGET_MINUTES] = next.dailyLookupDurationTargetMinutes
         }
     }
 
@@ -33,12 +36,21 @@ internal class StatisticsSettingsRepository(
                 ?: StatisticsTargetDefaults.DailyCharacterTarget,
             dailyDurationTargetMinutes = this[KEY_DAILY_DURATION_TARGET_MINUTES]
                 ?: StatisticsTargetDefaults.DailyDurationTargetMinutes,
+            dailyLookupTargetType = LookupTargetType.entries.firstOrNull { it.name == this[KEY_DAILY_LOOKUP_TARGET_TYPE] }
+                ?: LookupTargetType.Count,
+            dailyLookupCountTarget = this[KEY_DAILY_LOOKUP_COUNT_TARGET]
+                ?: StatisticsTargetDefaults.DailyLookupCountTarget,
+            dailyLookupDurationTargetMinutes = this[KEY_DAILY_LOOKUP_DURATION_TARGET_MINUTES]
+                ?: StatisticsTargetDefaults.DailyLookupDurationTargetMinutes,
         ).coerceStatisticsTargetSettings()
 
     private companion object {
         val KEY_DAILY_TARGET_TYPE = stringPreferencesKey("statisticsDailyTargetType")
         val KEY_DAILY_CHARACTER_TARGET = intPreferencesKey("statisticsDailyCharacterTarget")
         val KEY_DAILY_DURATION_TARGET_MINUTES = intPreferencesKey("statisticsDailyDurationTargetMinutes")
+        val KEY_DAILY_LOOKUP_TARGET_TYPE = stringPreferencesKey("statisticsDailyLookupTargetType")
+        val KEY_DAILY_LOOKUP_COUNT_TARGET = intPreferencesKey("statisticsDailyLookupCountTarget")
+        val KEY_DAILY_LOOKUP_DURATION_TARGET_MINUTES = intPreferencesKey("statisticsDailyLookupDurationTargetMinutes")
     }
 }
 
@@ -50,6 +62,16 @@ internal fun StatisticsTargetSettings.coerceStatisticsTargetSettings(): Statisti
             step = StatisticsTargetDefaults.DailyCharacterTargetStep,
         ),
         dailyDurationTargetMinutes = dailyDurationTargetMinutes.snapToStep(
+            min = StatisticsTargetDefaults.MinDailyDurationTargetMinutes,
+            max = StatisticsTargetDefaults.MaxDailyDurationTargetMinutes,
+            step = StatisticsTargetDefaults.DailyDurationTargetStepMinutes,
+        ),
+        dailyLookupCountTarget = dailyLookupCountTarget.snapToStep(
+            min = StatisticsTargetDefaults.MinDailyLookupCountTarget,
+            max = StatisticsTargetDefaults.MaxDailyLookupCountTarget,
+            step = StatisticsTargetDefaults.DailyLookupCountTargetStep,
+        ),
+        dailyLookupDurationTargetMinutes = dailyLookupDurationTargetMinutes.snapToStep(
             min = StatisticsTargetDefaults.MinDailyDurationTargetMinutes,
             max = StatisticsTargetDefaults.MaxDailyDurationTargetMinutes,
             step = StatisticsTargetDefaults.DailyDurationTargetStepMinutes,

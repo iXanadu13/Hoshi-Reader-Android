@@ -76,6 +76,63 @@ internal fun StatisticsHistoryGrid(
     }
 }
 
+@Composable
+internal fun StatisticsLookupHistoryGrid(
+    history: LookupHistoryUi,
+    settings: StatisticsTargetSettings,
+    today: LocalDate,
+    modifier: Modifier = Modifier,
+) {
+    val shortDatePattern = stringResource(R.string.statistics_history_short_date_pattern)
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        HistoryMetricRow(
+            HistoryMetricValue(
+                title = stringResource(R.string.statistics_current_streak),
+                value = formatStatisticsDays(history.currentStreak.count),
+                detail = history.currentStreak.range?.let {
+                    stringResource(
+                        R.string.statistics_history_since_format,
+                        formatStatisticsHistoryDate(it.start, today, shortDatePattern),
+                    )
+                },
+            ),
+            HistoryMetricValue(
+                title = stringResource(R.string.statistics_longest_streak),
+                value = formatStatisticsDays(history.longestStreak.count),
+                detail = history.longestStreak.range?.let { range ->
+                    val start = formatStatisticsHistoryDate(range.start, today, shortDatePattern)
+                    if (range.start == range.end) start else stringResource(
+                        R.string.statistics_date_interval_format,
+                        start,
+                        formatStatisticsHistoryDate(
+                            range.end,
+                            if (range.start.year == range.end.year) range.end else today,
+                            shortDatePattern,
+                        ),
+                    )
+                },
+            ),
+        )
+        HistoryMetricRow(
+            HistoryMetricValue(
+                title = stringResource(R.string.statistics_target_days),
+                value = formatStatisticsDays(history.metDays),
+                detail = androidx.compose.ui.res.pluralStringResource(
+                    R.plurals.statistics_history_lookup_days, history.lookupDays, history.lookupDays,
+                ),
+            ),
+            HistoryMetricValue(
+                title = stringResource(R.string.statistics_best_day),
+                value = when (settings.dailyLookupTargetType) {
+                    LookupTargetType.Count -> formatStatisticsGroupedCount(history.bestDay?.lookupCount ?: 0)
+                    LookupTargetType.Duration -> formatStatisticsDuration(history.bestDay?.lookupSeconds ?: 0.0)
+                },
+                detail = history.bestDay?.let { formatStatisticsHistoryDate(it.date, today, shortDatePattern) },
+            ),
+        )
+    }
+}
+
 private data class HistoryMetricValue(val title: String, val value: String, val detail: String?)
 
 @Composable

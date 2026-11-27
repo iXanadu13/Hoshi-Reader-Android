@@ -62,14 +62,101 @@ internal fun StatisticsGoalPicker(
     state: StatisticsTargetSettingsUi,
     onEvent: (StatisticsEvent) -> Unit,
 ) {
-    val margin = with(LocalDensity.current) { 8.dp.roundToPx() }
-    val position = remember(margin) { GoalPickerPositionProvider(margin) }
     val settings = state.values
     val type = settings.dailyTargetType
+    StatisticsGoalPickerPopup(
+        type = type,
+        subtitle = stringResource(
+            if (type == DailyTargetType.Characters) R.string.statistics_goal_characters_per_day
+            else R.string.statistics_goal_minutes_per_day,
+        ),
+        options = listOf(
+            StatisticsSegmentedOption(DailyTargetType.Duration, stringResource(R.string.statistics_target_type_duration)),
+            StatisticsSegmentedOption(DailyTargetType.Characters, stringResource(R.string.statistics_target_type_characters)),
+        ),
+        valuesForType = { selectedType ->
+            when (selectedType) {
+                DailyTargetType.Characters -> (StatisticsTargetDefaults.MinDailyCharacterTarget..StatisticsTargetDefaults.MaxDailyCharacterTarget step StatisticsTargetDefaults.DailyCharacterTargetStep).toList()
+                DailyTargetType.Duration -> (StatisticsTargetDefaults.MinDailyDurationTargetMinutes..StatisticsTargetDefaults.MaxDailyDurationTargetMinutes step StatisticsTargetDefaults.DailyDurationTargetStepMinutes).toList()
+            }
+        },
+        valueForType = { selectedType ->
+            if (selectedType == DailyTargetType.Characters) settings.dailyCharacterTarget
+            else settings.dailyDurationTargetMinutes
+        },
+        onSelectType = { onEvent(StatisticsEvent.SelectDailyTargetType(it)) },
+        onSelectValue = { selectedType, value ->
+            onEvent(
+                when (selectedType) {
+                    DailyTargetType.Characters -> StatisticsEvent.UpdateDailyCharacterTarget(value)
+                    DailyTargetType.Duration -> StatisticsEvent.UpdateDailyDurationTargetMinutes(value)
+                },
+            )
+        },
+        error = state.error,
+        onDismiss = { onEvent(StatisticsEvent.DismissTargetSettings) },
+    )
+}
+
+@Composable
+internal fun StatisticsLookupGoalPicker(
+    state: StatisticsTargetSettingsUi,
+    onEvent: (StatisticsEvent) -> Unit,
+) {
+    val settings = state.values
+    val type = settings.dailyLookupTargetType
+    StatisticsGoalPickerPopup(
+        type = type,
+        subtitle = stringResource(
+            if (type == LookupTargetType.Count) R.string.statistics_lookup_count_per_day
+            else R.string.statistics_goal_minutes_per_day,
+        ),
+        options = listOf(
+            StatisticsSegmentedOption(LookupTargetType.Duration, stringResource(R.string.statistics_target_type_duration)),
+            StatisticsSegmentedOption(LookupTargetType.Count, stringResource(R.string.statistics_target_type_lookup_count)),
+        ),
+        valuesForType = { selectedType ->
+            when (selectedType) {
+                LookupTargetType.Count -> (StatisticsTargetDefaults.MinDailyLookupCountTarget..StatisticsTargetDefaults.MaxDailyLookupCountTarget step StatisticsTargetDefaults.DailyLookupCountTargetStep).toList()
+                LookupTargetType.Duration -> (StatisticsTargetDefaults.MinDailyDurationTargetMinutes..StatisticsTargetDefaults.MaxDailyDurationTargetMinutes step StatisticsTargetDefaults.DailyDurationTargetStepMinutes).toList()
+            }
+        },
+        valueForType = { selectedType ->
+            if (selectedType == LookupTargetType.Count) settings.dailyLookupCountTarget
+            else settings.dailyLookupDurationTargetMinutes
+        },
+        onSelectType = { onEvent(StatisticsEvent.SelectLookupTargetType(it)) },
+        onSelectValue = { selectedType, value ->
+            onEvent(
+                when (selectedType) {
+                    LookupTargetType.Count -> StatisticsEvent.UpdateDailyLookupCountTarget(value)
+                    LookupTargetType.Duration -> StatisticsEvent.UpdateDailyLookupDurationTargetMinutes(value)
+                },
+            )
+        },
+        error = state.error,
+        onDismiss = { onEvent(StatisticsEvent.DismissLookupTargetSettings) },
+    )
+}
+
+@Composable
+private fun <T> StatisticsGoalPickerPopup(
+    type: T,
+    subtitle: String,
+    options: List<StatisticsSegmentedOption<T>>,
+    valuesForType: (T) -> List<Int>,
+    valueForType: (T) -> Int,
+    onSelectType: (T) -> Unit,
+    onSelectValue: (T, Int) -> Unit,
+    error: moe.antimony.hoshi.ui.UiText?,
+    onDismiss: () -> Unit,
+) {
+    val margin = with(LocalDensity.current) { 8.dp.roundToPx() }
+    val position = remember(margin) { GoalPickerPositionProvider(margin) }
     val eInk = LocalHoshiEInkMode.current
     Popup(
         popupPositionProvider = position,
-        onDismissRequest = { onEvent(StatisticsEvent.DismissTargetSettings) },
+        onDismissRequest = onDismiss,
         properties = PopupProperties(focusable = true),
     ) {
         Surface(
@@ -86,40 +173,27 @@ internal fun StatisticsGoalPicker(
             ) {
                 Text(stringResource(R.string.statistics_goal_picker_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    stringResource(if (type == DailyTargetType.Characters) R.string.statistics_goal_characters_per_day else R.string.statistics_goal_minutes_per_day),
+                    subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 StatisticsSegmentedControl(
-                    options = listOf(
-                        StatisticsSegmentedOption(DailyTargetType.Duration, stringResource(R.string.statistics_target_type_duration)),
-                        StatisticsSegmentedOption(DailyTargetType.Characters, stringResource(R.string.statistics_target_type_characters)),
-                    ),
+                    options = options,
                     selected = type,
-                    onSelect = { onEvent(StatisticsEvent.SelectDailyTargetType(it)) },
+                    onSelect = onSelectType,
                 )
                 key(type) {
-                    val values = remember(type) {
-                        when (type) {
-                            DailyTargetType.Characters -> (StatisticsTargetDefaults.MinDailyCharacterTarget..StatisticsTargetDefaults.MaxDailyCharacterTarget step StatisticsTargetDefaults.DailyCharacterTargetStep).toList()
-                            DailyTargetType.Duration -> (StatisticsTargetDefaults.MinDailyDurationTargetMinutes..StatisticsTargetDefaults.MaxDailyDurationTargetMinutes step StatisticsTargetDefaults.DailyDurationTargetStepMinutes).toList()
-                        }
-                    }
+                    val values = remember(type) { valuesForType(type) }
                     GoalValueWheel(
                         values = values,
-                        value = if (type == DailyTargetType.Characters) settings.dailyCharacterTarget else settings.dailyDurationTargetMinutes,
-                        onSelect = { value ->
-                            onEvent(when (type) {
-                                DailyTargetType.Characters -> StatisticsEvent.UpdateDailyCharacterTarget(value)
-                                DailyTargetType.Duration -> StatisticsEvent.UpdateDailyDurationTargetMinutes(value)
-                            })
-                        },
+                        value = valueForType(type),
+                        onSelect = { onSelectValue(type, it) },
                     )
                 }
-                state.error?.let { error ->
+                error?.let {
                     SelectionContainer {
                         Text(
-                            error.asString(),
+                            it.asString(),
                             modifier = Modifier.heightIn(max = 120.dp).verticalScroll(rememberScrollState()),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,

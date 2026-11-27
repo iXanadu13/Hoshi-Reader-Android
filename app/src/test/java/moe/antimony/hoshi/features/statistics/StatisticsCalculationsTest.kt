@@ -365,6 +365,23 @@ class StatisticsCalculationsTest {
     }
 
     @Test
+    fun lookupHistoryUsesLookupMetricForGoalsAndHeatmap() {
+        val today = LocalDate.parse("2026-06-30")
+        val days = listOf(
+            lookupDay("2026-06-29", count = 50, seconds = 600.0),
+            lookupDay("2026-06-30", count = 25, seconds = 1_800.0),
+        )
+        val settings = StatisticsTargetSettings(dailyLookupCountTarget = 50)
+
+        val history = lookupHistorySummary(days, today, settings)
+        assertEquals(1, history.currentStreak.count)
+        assertEquals(1, history.metDays)
+        assertEquals(2, history.lookupDays)
+        assertEquals(LocalDate.parse("2026-06-29"), history.bestDay?.date)
+        assertEquals(listOf(7, 1), lookupHeatLevels(days).values.toList())
+    }
+
+    @Test
     fun yearlyComparisonUsesPreviousTwelveMonthAverage() {
         val today = LocalDate.parse("2026-03-20")
         val summary = overviewRangeSummary(
@@ -405,6 +422,9 @@ class StatisticsCalculationsTest {
             activeBookCount = contributions.count { it.characters > 0 || it.readingSeconds > 0.0 },
             bookContributions = contributions,
         )
+
+    private fun lookupDay(date: String, count: Int, seconds: Double): LookupStatisticsDay =
+        LookupStatisticsDay(LocalDate.parse(date), count, seconds)
 
     private fun contribution(
         bookId: String,

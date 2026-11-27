@@ -82,7 +82,7 @@ internal fun StatisticsReadingTimeSection(
                         StatisticsRangeMode.Week, StatisticsRangeMode.Month -> R.string.statistics_period_daily_average_format
                         StatisticsRangeMode.Year, StatisticsRangeMode.All -> R.string.statistics_period_monthly_average_format
                     },
-                    statisticsCompactRangeTitle(currentRange, today),
+                    statisticsCompactRangeTitle(currentRange.mode, currentRange.range, today),
                 ),
                 modifier = Modifier.weight(1f),
                 style = rangeTitleStyle,
@@ -128,7 +128,7 @@ internal fun StatisticsReadingTimeSection(
 }
 
 @Composable
-private fun StatisticsPeriodNavigation(pager: PagerState, selectedPage: Int) = key(pager) {
+internal fun StatisticsPeriodNavigation(pager: PagerState, selectedPage: Int) = key(pager) {
     val scope = rememberCoroutineScope()
     val eInk = LocalHoshiEInkMode.current
     var navigationRequested by remember { mutableStateOf(false) }
@@ -164,7 +164,7 @@ private fun StatisticsPeriodNavigation(pager: PagerState, selectedPage: Int) = k
 }
 
 @Composable
-private fun StatisticsReadingTimeHeadline(duration: String, change: Double?, comparison: String?) {
+internal fun StatisticsReadingTimeHeadline(duration: String, change: Double?, comparison: String?) {
     val durationStyle = MaterialTheme.typography.headlineLarge.copy(fontSize = 38.sp, fontWeight = FontWeight.Normal)
     val comparisonStyle = MaterialTheme.typography.bodyMedium
     val color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -209,7 +209,7 @@ private fun StatisticsReadingTimeHeadline(duration: String, change: Double?, com
 }
 
 @Composable
-private fun StatisticsSummaryRow(label: String, value: String) {
+internal fun StatisticsSummaryRow(label: String, value: String) {
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -230,13 +230,17 @@ internal fun statisticsBucketTitle(mode: StatisticsRangeMode, bucket: Statistics
     }
 
 @Composable
-private fun statisticsCompactRangeTitle(current: CurrentRangeStatisticsUi, today: java.time.LocalDate): String {
-    if (current.mode != StatisticsRangeMode.Week) return rangeTitle(current.mode, current.range)
+internal fun statisticsCompactRangeTitle(
+    mode: StatisticsRangeMode,
+    range: StatisticsDateRange,
+    today: java.time.LocalDate,
+): String {
+    if (mode != StatisticsRangeMode.Week) return rangeTitle(mode, range)
     val pattern = stringResource(R.string.statistics_history_short_date_pattern)
     return stringResource(
         R.string.statistics_date_interval_format,
-        formatStatisticsHistoryDate(current.range.start, today, pattern),
-        formatStatisticsHistoryDate(current.range.end, today, pattern),
+        formatStatisticsHistoryDate(range.start, today, pattern),
+        formatStatisticsHistoryDate(range.end, today, pattern),
     )
 }
 

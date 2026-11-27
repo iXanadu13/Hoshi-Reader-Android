@@ -339,6 +339,10 @@ internal fun DictionarySearchView(
         iframeHostWebView?.onResume()
         onPauseOrDispose { iframeHostWebView?.onPause() }
     }
+    LifecycleResumeEffect(isActive) {
+        searchViewModel.setStatisticsPageActive(isActive)
+        onPauseOrDispose { searchViewModel.setStatisticsPageActive(false) }
+    }
     LaunchedEffect(isActive) {
         if (isActive) {
             requestSearchFocus()

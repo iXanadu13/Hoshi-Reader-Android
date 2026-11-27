@@ -54,6 +54,14 @@
     <string name="main_tab_statistics" comment="Main navigation tab label, intentionally matching statistics page titles.">Statistics</string>
     <string name="main_tab_settings" comment="Main navigation tab label, intentionally matching settings page titles.">Settings</string>
     <string name="statistics_title" comment="Statistics page title, intentionally matching the main tab label.">Statistics</string>
+    <string name="statistics_metric_reading" comment="Statistics metric selector label, distinct from the bookshelf reading section.">Reading</string>
+    <string name="statistics_metric_lookup" comment="Statistics metric selector label, distinct from the dictionary settings label.">Lookup</string>
+    <string name="statistics_lookup_count">Lookup Count</string>
+    <string name="statistics_lookup_time">Lookup Time</string>
+    <string name="statistics_target_type_lookup_count" comment="Lookup daily goal type option, intentionally matching the existing count label.">Count</string>
+    <string name="statistics_lookup_count_per_day">lookups per day</string>
+    <string name="statistics_lookup_count_value_format">%1$s lookups</string>
+    <string name="statistics_lookup_goal_count_link_format">/ %1$s lookup goal</string>
     <string name="statistics_today" comment="Statistics dashboard section title, intentionally matching reader statistics today label.">Today</string>
     <string name="statistics_reading_duration" comment="Dashboard metric label, intentionally matching the duration legend and target type label.">Duration</string>
     <string name="statistics_characters_read">Characters Read</string>
@@ -153,7 +161,7 @@
     <string name="bookshelf_delete_remote_book_confirmation">This moves the remote Google Drive folder to trash. Local books are not deleted.</string>
     <string name="bookshelf_mark_read_title_format">Mark \"%1$s\" as read?</string>
     <string name="bookshelf_title_label" comment="Text-field label for renaming a book, distinct from the sort option.">Title</string>
-    <string name="bookshelf_section_reading">Reading</string>
+    <string name="bookshelf_section_reading" comment="Bookshelf section label, intentionally matching the Statistics metric selector.">Reading</string>
     <string name="bookshelf_section_unshelved">Unshelved</string>
     <string name="bookshelf_section_google_drive" comment="Bookshelf remote section label, intentionally matching the Google Drive sync provider name.">Google Drive</string>
     <string name="bookshelf_selected_count_format">%1$d Selected</string>
@@ -259,7 +267,7 @@
     <string name="dictionary_import_action">Import Dictionary</string>
     <string name="dictionary_delete_action">Delete Dictionary</string>
     <string name="dictionary_reorder_action">Reorder Dictionary</string>
-    <string name="dictionary_settings_lookup">Lookup</string>
+    <string name="dictionary_settings_lookup" comment="Dictionary settings label, intentionally matching the Statistics metric selector.">Lookup</string>
     <string name="dictionary_settings_search_text">Search Text</string>
     <string name="dictionary_settings_import" comment="Dictionary settings section label, intentionally matching the Import action noun.">Import</string>
     <string name="dictionary_scan_non_japanese">Scan Non-Japanese Text</string>
@@ -809,6 +817,10 @@
     <plurals name="statistics_history_reading_days">
         <item quantity="one">of %1$d day read</item>
         <item quantity="other">of %1$d days read</item>
+    </plurals>
+    <plurals name="statistics_history_lookup_days">
+        <item quantity="one">of %1$d lookup day</item>
+        <item quantity="other">of %1$d lookup days</item>
     </plurals>
     <string name="statistics_goal_clock_format">%1$d:%2$02d</string>
     <string name="statistics_goal_characters_link_format">/ %1$s character goal</string>

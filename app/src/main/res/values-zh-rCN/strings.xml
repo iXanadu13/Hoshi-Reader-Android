@@ -54,6 +54,14 @@
     <string name="main_tab_statistics" comment="Main navigation tab label, intentionally matching statistics page titles.">统计</string>
     <string name="main_tab_settings" comment="Main navigation tab label, intentionally matching settings page titles.">设置</string>
     <string name="statistics_title" comment="Statistics page title, intentionally matching the main tab label.">统计</string>
+    <string name="statistics_metric_reading" comment="Statistics metric selector label, distinct from the bookshelf reading section.">阅读</string>
+    <string name="statistics_metric_lookup" comment="Statistics metric selector label, distinct from the dictionary settings label.">查词</string>
+    <string name="statistics_lookup_count">查词数量</string>
+    <string name="statistics_lookup_time">查词时间</string>
+    <string name="statistics_target_type_lookup_count">查词数</string>
+    <string name="statistics_lookup_count_per_day">每日查词数</string>
+    <string name="statistics_lookup_count_value_format">%1$s 次</string>
+    <string name="statistics_lookup_goal_count_link_format">/ %1$s 次查词目标</string>
     <string name="statistics_today" comment="Statistics dashboard section title, intentionally matching reader statistics today label.">今天</string>
     <string name="statistics_reading_duration" comment="Dashboard metric label, intentionally matching the duration legend and target type label.">时长</string>
     <string name="statistics_characters_read">阅读字数</string>
@@ -151,7 +159,7 @@
     <string name="bookshelf_delete_remote_book_confirmation">这会将远端 Google Drive 文件夹移入回收站。本地书籍不会被删除。</string>
     <string name="bookshelf_mark_read_title_format">将“%1$s”标记为已读？</string>
     <string name="bookshelf_title_label" comment="Text-field label for renaming a book, distinct from the sort option.">标题</string>
-    <string name="bookshelf_section_reading">正在阅读</string>
+    <string name="bookshelf_section_reading" comment="Bookshelf section label, intentionally matching the Statistics metric selector.">正在阅读</string>
     <string name="bookshelf_section_unshelved">未归类</string>
     <string name="bookshelf_section_google_drive" comment="Bookshelf remote section label, intentionally matching the Google Drive sync provider name.">Google Drive</string>
     <string name="bookshelf_selected_count_format">已选择 %1$d 本</string>
@@ -257,7 +265,7 @@
     <string name="dictionary_import_action">导入辞典</string>
     <string name="dictionary_delete_action">删除辞典</string>
     <string name="dictionary_reorder_action">重新排序辞典</string>
-    <string name="dictionary_settings_lookup">查词</string>
+    <string name="dictionary_settings_lookup" comment="Dictionary settings label, intentionally matching the Statistics metric selector.">查词</string>
     <string name="dictionary_settings_search_text">搜索文本</string>
     <string name="dictionary_settings_import" comment="Dictionary settings section label, intentionally matching the Import action noun.">导入</string>
     <string name="dictionary_scan_non_japanese">扫描非日语文本</string>
@@ -807,6 +815,10 @@
     <plurals name="statistics_history_reading_days">
         <item quantity="one">共阅读 %1$d 天</item>
         <item quantity="other">共阅读 %1$d 天</item>
+    </plurals>
+    <plurals name="statistics_history_lookup_days">
+        <item quantity="one">共查词 %1$d 天</item>
+        <item quantity="other">共查词 %1$d 天</item>
     </plurals>
     <string name="statistics_goal_clock_format">%1$d:%2$02d</string>
     <string name="statistics_goal_characters_link_format">/ %1$s 字目标</string>

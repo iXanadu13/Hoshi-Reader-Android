@@ -73,4 +73,29 @@ class StatisticsDashboardSectionsTest {
         assertEquals(1f, statisticsDailyGoalProgress(exceeded, duration), 0f)
     }
 
+    @Test
+    fun lookupDailyGaugeUsesCountOrDurationGoal() {
+        val today = TodayLookupStatisticsUi(
+            date = LocalDate.parse("2026-09-18"),
+            lookupCount = 25,
+            lookupSeconds = 900.0,
+        )
+        assertEquals(
+            0.5f,
+            lookupDailyGoalProgress(today, StatisticsTargetSettings(dailyLookupCountTarget = 50)),
+            0.00001f,
+        )
+        assertEquals(
+            0.5f,
+            lookupDailyGoalProgress(
+                today,
+                StatisticsTargetSettings(
+                    dailyLookupTargetType = LookupTargetType.Duration,
+                    dailyLookupDurationTargetMinutes = 30,
+                ),
+            ),
+            0.00001f,
+        )
+    }
+
 }

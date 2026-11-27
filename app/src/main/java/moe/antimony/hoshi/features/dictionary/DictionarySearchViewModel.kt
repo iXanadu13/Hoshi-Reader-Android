@@ -22,6 +22,8 @@ import moe.antimony.hoshi.features.audio.AudioSettings
 import moe.antimony.hoshi.features.anki.AnkiMiningContext
 import moe.antimony.hoshi.features.audio.AudioSettingsRepository
 import moe.antimony.hoshi.features.reader.ReaderSelectionData
+import moe.antimony.hoshi.features.statistics.LookupStatisticsRepository
+import moe.antimony.hoshi.features.statistics.EmptyLookupStatisticsRepository
 import moe.antimony.hoshi.R
 import moe.antimony.hoshi.di.IoDispatcher
 import moe.antimony.hoshi.ui.UiText
@@ -73,11 +75,13 @@ internal class DictionarySearchViewModel : ViewModel {
         repository: DictionarySearchRepository,
         history: DictionaryLookupHistory,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
+        lookupStatistics: LookupStatisticsRepository,
     ) : this(
         repository = repository,
         history = history,
         coroutineScope = null,
         ioDispatcher = ioDispatcher,
+        lookupStatistics = lookupStatistics,
         marker = Unit,
     )
 
@@ -86,11 +90,13 @@ internal class DictionarySearchViewModel : ViewModel {
         history: DictionaryLookupHistory,
         coroutineScope: CoroutineScope,
         ioDispatcher: CoroutineDispatcher,
+        lookupStatistics: LookupStatisticsRepository = EmptyLookupStatisticsRepository,
     ) : this(
         repository = repository,
         history = history,
         coroutineScope = coroutineScope,
         ioDispatcher = ioDispatcher,
+        lookupStatistics = lookupStatistics,
         marker = Unit,
     )
 
@@ -99,12 +105,14 @@ internal class DictionarySearchViewModel : ViewModel {
         history: DictionaryLookupHistory,
         coroutineScope: CoroutineScope?,
         ioDispatcher: CoroutineDispatcher,
+        lookupStatistics: LookupStatisticsRepository,
         @Suppress("UNUSED_PARAMETER") marker: Unit,
     ) : super() {
         this.repository = repository
         this.history = history
         this.ioDispatcher = ioDispatcher
         injectedScope = coroutineScope
+        statisticsTracker = DictionaryLookupStatisticsTracker(lookupStatistics)
         collectInitialState()
     }
 
@@ -120,6 +128,9 @@ internal class DictionarySearchViewModel : ViewModel {
 
     private var observedEffectiveProfileId: String? = null
     private var lookupVersion: Int = 0
+    private lateinit var statisticsTracker: DictionaryLookupStatisticsTracker
+
+    fun setStatisticsPageActive(active: Boolean) = statisticsTracker.setActive(active)
 
     private fun collectInitialState() {
         scope.launch {
@@ -200,6 +211,7 @@ internal class DictionarySearchViewModel : ViewModel {
     fun runLookup() {
         val query = _uiState.value.query
         history.record(query)
+        if (query.isNotBlank()) statisticsTracker.recordLookup()
         val dictionarySettings = _uiState.value.dictionarySettings.normalized()
         val requestVersion = ++lookupVersion
         scope.launch {
@@ -400,4 +412,8 @@ internal class DictionarySearchViewModel : ViewModel {
         }
     }
 
+    override fun onCleared() {
+        statisticsTracker.stop()
+        super.onCleared()
+    }
 }

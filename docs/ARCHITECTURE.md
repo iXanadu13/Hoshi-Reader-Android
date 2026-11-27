@@ -33,6 +33,7 @@ Names without an extension are searchable types, not necessarily filenames.
 | Dictionary import/query | `dictionary/DictionaryRepository.kt`, `dictionary/DictionaryNativeBridge.kt`, `dictionary/DictionaryLookupQueryService.kt` | Native session and repository boundary; algorithms live in the bridge submodule |
 | Dictionary UI, updates | `features/dictionary/`, `DictionaryMutationCoordinator` | Retained search session, profile configuration and serialized mutations |
 | Lookup submission history | `features/dictionary/DictionaryLookupHistoryRepository.kt` | Global persistent original submissions from Dictionary and external lookup entry points |
+| Lookup statistics | `features/statistics/LookupStatisticsRepository.kt`, `features/dictionary/DictionaryLookupStatisticsTracker.kt` | Local lookup counts and foreground Dictionary-page dwell time for the Statistics dashboard |
 | Word audio | `features/audio/LocalAudioRepository.kt`, `LocalAudioSettingsViewModel.kt`, `LocalAudioNativeDatabase.kt`, `features/audio/RemoteWordAudioRepository.kt`, `AudioRequestHandler` | Copy/link binding, reusable read-only SQLite session and ordered candidates shared by playback and Anki |
 | Anki cards and media | `features/anki/AnkiRepository.kt`, `features/anki/AnkiBackend.kt` | Backend selection, formats, duplicate checks and export |
 | Hoshi/TTU Drive sync | `features/sync/GoogleDriveSyncManager.kt`, `features/sync/GoogleDriveSyncHandler.kt`, `features/sync/GoogleDriveFileTransfer.kt`, `features/sync/TtuSyncManager.kt`, `SyncStorage` | Provider protocols, state merge and background synchronization |
@@ -622,6 +623,11 @@ and copying an asset snapshot creates independent template caches.
   only persisted changes. Resetting a search or opening a book preserves this
   history; only the empty Dictionary page displays it. Storage failures retain
   confirmed entries and report original diagnostics without blocking lookup.
+- `DictionaryLookupStatisticsTracker` counts nonblank submissions made through
+  the active Dictionary page and records only its foreground, active-tab dwell
+  intervals. `LookupStatisticsRepository` persists those intervals separately
+  from de-duplicated history and groups them by the configured statistics day
+  when Statistics loads; Reader and popup lookups do not contribute.
 
 ## Integration boundaries
 

@@ -101,6 +101,34 @@ class StatisticsViewModelTest {
     }
 
     @Test
+    fun lookupMetricUsesLookupCountsAndTimeForRangeAndBucket() = runBlocking {
+        viewModel(
+            repository = FakeStatisticsRepository(
+                snapshot(
+                    lookupDays = listOf(
+                        LookupStatisticsDay(LocalDate.parse("2026-06-29"), lookupCount = 2, lookupSeconds = 600.0),
+                        LookupStatisticsDay(LocalDate.parse("2026-06-30"), lookupCount = 3, lookupSeconds = 900.0),
+                    ),
+                ),
+            ),
+        ).use { vm ->
+            vm.reload()
+            vm.onEvent(StatisticsEvent.SelectMetricMode(StatisticsMetricMode.Lookup))
+            assertEquals(3, vm.uiState.value.lookupToday.lookupCount)
+            assertEquals(900.0, vm.uiState.value.lookupToday.lookupSeconds, 0.0)
+
+            vm.onEvent(StatisticsEvent.SelectRangeMode(StatisticsRangeMode.All))
+            assertEquals(5, vm.uiState.value.lookupRange.summary.totalLookups)
+            assertEquals(1_500.0, vm.uiState.value.lookupRange.summary.lookupSeconds, 0.0)
+
+            vm.onEvent(StatisticsEvent.SelectRangeMode(StatisticsRangeMode.Week))
+            vm.onEvent(StatisticsEvent.SelectTrendBucket("2026-06-29"))
+            assertEquals(2, vm.uiState.value.lookupRange.summary.totalLookups)
+            assertEquals(600.0, vm.uiState.value.lookupRange.summary.lookupSeconds, 0.0)
+        }
+    }
+
+    @Test
     fun monthAndWeekChartSelectionFiltersSummaryAndBooksWithoutChangingOuterRange() = runBlocking {
         val data = snapshot(
             day("2026-06-29", contributions = listOf(contribution("a", "A", 1_000, 600.0))),
@@ -449,6 +477,23 @@ class StatisticsViewModelTest {
     }
 
     @Test
+    fun lookupGoalUpdatesUseLookupValuesWithoutChangingReadingGoal() = runBlocking {
+        viewModel(snapshot = snapshot()).use { vm ->
+            vm.onEvent(StatisticsEvent.OpenLookupTargetSettings)
+            vm.onEvent(StatisticsEvent.UpdateDailyLookupCountTarget(75))
+            vm.onEvent(StatisticsEvent.SelectLookupTargetType(LookupTargetType.Duration))
+            vm.onEvent(StatisticsEvent.UpdateDailyLookupDurationTargetMinutes(45))
+
+            val settings = vm.uiState.value.lookupSettings
+            assertEquals(true, settings.isEditorVisible)
+            assertEquals(LookupTargetType.Duration, settings.values.dailyLookupTargetType)
+            assertEquals(75, settings.values.dailyLookupCountTarget)
+            assertEquals(45, settings.values.dailyLookupDurationTargetMinutes)
+            assertEquals(5_000, settings.values.dailyCharacterTarget)
+        }
+    }
+
+    @Test
     fun reloadIgnoresOlderSnapshotWhenNewerReloadCompletesFirst() = runBlocking {
         val firstLoad = CompletableDeferred<StatisticsSnapshot>()
         val secondLoad = CompletableDeferred<StatisticsSnapshot>()
@@ -561,10 +606,14 @@ class StatisticsViewModelTest {
         override fun currentDate(resetMinutes: Int): LocalDate = date
     }
 
-    private fun snapshot(vararg days: StatisticsDayAggregate): StatisticsSnapshot =
+    private fun snapshot(
+        vararg days: StatisticsDayAggregate,
+        lookupDays: List<LookupStatisticsDay> = emptyList(),
+    ): StatisticsSnapshot =
         StatisticsSnapshot(
             days = days.toList(),
             availableYears = days.map { it.date.year }.distinct().sortedDescending(),
+            lookupDays = lookupDays,
         )
 
     private fun day(

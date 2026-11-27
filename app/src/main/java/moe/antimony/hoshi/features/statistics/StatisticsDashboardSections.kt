@@ -107,53 +107,163 @@ internal fun TodayStatisticsSection(
         title = stringResource(R.string.statistics_daily_target),
         modifier = modifier,
     ) {
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            if (maxWidth >= 640.dp) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    DailyGoalGauge(
-                        today = today,
-                        settings = settings,
-                        targetEditor = targetEditor,
-                        onEvent = onEvent,
-                        modifier = Modifier.width(320.dp),
-                    )
-                    StatisticsHistoryGrid(
-                        history = history,
-                        settings = settings,
-                        today = today.date,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            } else {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    DailyGoalGauge(
-                        today = today,
-                        settings = settings,
-                        targetEditor = targetEditor,
-                        onEvent = onEvent,
-                        modifier = Modifier.widthIn(max = 360.dp).fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(18.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Spacer(Modifier.height(14.dp))
-                    StatisticsHistoryGrid(history = history, settings = settings, today = today.date)
-                }
-            }
-        }
-        Spacer(Modifier.height(14.dp))
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Spacer(Modifier.height(12.dp))
-        StatisticsHeatmap(
+        StatisticsDailyGoalBody(
+            gauge = { gaugeModifier ->
+                DailyGoalGauge(
+                    progress = statisticsDailyGoalProgress(today, settings),
+                    headline = when (settings.dailyTargetType) {
+                        DailyTargetType.Characters -> formatStatisticsGroupedCount(today.totalCharacters)
+                        DailyTargetType.Duration -> {
+                            val seconds = today.readingSeconds.roundToInt().coerceAtLeast(0)
+                            stringResource(R.string.statistics_goal_clock_format, seconds / 60, seconds % 60)
+                        }
+                    },
+                    secondary = when (settings.dailyTargetType) {
+                        DailyTargetType.Characters -> stringResource(
+                            R.string.statistics_duration_minutes_format,
+                            (today.readingSeconds / 60).roundToInt(),
+                        )
+                        DailyTargetType.Duration -> formatStatisticsCharacters(today.totalCharacters)
+                    },
+                    targetLabel = when (settings.dailyTargetType) {
+                        DailyTargetType.Characters -> stringResource(
+                            R.string.statistics_goal_characters_link_format,
+                            formatStatisticsGroupedCount(settings.dailyCharacterTarget),
+                        )
+                        DailyTargetType.Duration -> stringResource(
+                            R.string.statistics_goal_minutes_link_format,
+                            settings.dailyDurationTargetMinutes,
+                        )
+                    },
+                    onOpenTargetSettings = { onEvent(StatisticsEvent.OpenTargetSettings) },
+                    targetEditor = {
+                        if (targetEditor.isEditorVisible) StatisticsGoalPicker(targetEditor, onEvent)
+                    },
+                    modifier = gaugeModifier,
+                )
+            },
+            history = { historyModifier ->
+                StatisticsHistoryGrid(
+                    history = history,
+                    settings = settings,
+                    today = today.date,
+                    modifier = historyModifier,
+                )
+            },
             heatmap = heatmap,
-            scrollState = heatmapScrollState,
-            initiallyScrolled = heatmapInitiallyScrolled,
-            onInitiallyScrolled = onHeatmapInitiallyScrolled,
+            heatmapScrollState = heatmapScrollState,
+            heatmapInitiallyScrolled = heatmapInitiallyScrolled,
+            onHeatmapInitiallyScrolled = onHeatmapInitiallyScrolled,
         )
     }
+}
+
+@Composable
+internal fun TodayLookupStatisticsSection(
+    today: TodayLookupStatisticsUi,
+    history: LookupHistoryUi,
+    heatmap: StatisticsHeatmapUi,
+    heatmapScrollState: LazyListState,
+    heatmapInitiallyScrolled: Boolean,
+    onHeatmapInitiallyScrolled: () -> Unit,
+    settings: StatisticsTargetSettings,
+    targetEditor: StatisticsTargetSettingsUi,
+    onEvent: (StatisticsEvent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    StatisticsSection(
+        title = stringResource(R.string.statistics_daily_target),
+        modifier = modifier,
+    ) {
+        StatisticsDailyGoalBody(
+            gauge = { gaugeModifier ->
+                DailyGoalGauge(
+                    progress = lookupDailyGoalProgress(today, settings),
+                    headline = when (settings.dailyLookupTargetType) {
+                        LookupTargetType.Count -> formatStatisticsGroupedCount(today.lookupCount)
+                        LookupTargetType.Duration -> {
+                            val seconds = today.lookupSeconds.roundToInt().coerceAtLeast(0)
+                            stringResource(R.string.statistics_goal_clock_format, seconds / 60, seconds % 60)
+                        }
+                    },
+                    secondary = when (settings.dailyLookupTargetType) {
+                        LookupTargetType.Count -> formatStatisticsDuration(today.lookupSeconds)
+                        LookupTargetType.Duration -> stringResource(
+                            R.string.statistics_lookup_count_value_format,
+                            formatStatisticsGroupedCount(today.lookupCount),
+                        )
+                    },
+                    targetLabel = when (settings.dailyLookupTargetType) {
+                        LookupTargetType.Count -> stringResource(
+                            R.string.statistics_lookup_goal_count_link_format,
+                            formatStatisticsGroupedCount(settings.dailyLookupCountTarget),
+                        )
+                        LookupTargetType.Duration -> stringResource(
+                            R.string.statistics_goal_minutes_link_format,
+                            settings.dailyLookupDurationTargetMinutes,
+                        )
+                    },
+                    onOpenTargetSettings = { onEvent(StatisticsEvent.OpenLookupTargetSettings) },
+                    targetEditor = {
+                        if (targetEditor.isEditorVisible) StatisticsLookupGoalPicker(targetEditor, onEvent)
+                    },
+                    modifier = gaugeModifier,
+                )
+            },
+            history = { historyModifier ->
+                StatisticsLookupHistoryGrid(
+                    history = history,
+                    settings = settings,
+                    today = today.date,
+                    modifier = historyModifier,
+                )
+            },
+            heatmap = heatmap,
+            heatmapScrollState = heatmapScrollState,
+            heatmapInitiallyScrolled = heatmapInitiallyScrolled,
+            onHeatmapInitiallyScrolled = onHeatmapInitiallyScrolled,
+        )
+    }
+}
+
+@Composable
+private fun StatisticsDailyGoalBody(
+    gauge: @Composable (Modifier) -> Unit,
+    history: @Composable (Modifier) -> Unit,
+    heatmap: StatisticsHeatmapUi,
+    heatmapScrollState: LazyListState,
+    heatmapInitiallyScrolled: Boolean,
+    onHeatmapInitiallyScrolled: () -> Unit,
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        if (maxWidth >= 640.dp) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                gauge(Modifier.width(320.dp))
+                history(Modifier.weight(1f))
+            }
+        } else {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                gauge(Modifier.widthIn(max = 360.dp).fillMaxWidth())
+                Spacer(Modifier.height(18.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(Modifier.height(14.dp))
+                history(Modifier)
+            }
+        }
+    }
+    Spacer(Modifier.height(14.dp))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    Spacer(Modifier.height(12.dp))
+    StatisticsHeatmap(
+        heatmap = heatmap,
+        scrollState = heatmapScrollState,
+        initiallyScrolled = heatmapInitiallyScrolled,
+        onInitiallyScrolled = onHeatmapInitiallyScrolled,
+    )
 }
 
 @Composable
@@ -299,26 +409,16 @@ private fun MetricCard(
 
 @Composable
 private fun DailyGoalGauge(
-    today: TodayStatisticsUi,
-    settings: StatisticsTargetSettings,
-    targetEditor: StatisticsTargetSettingsUi,
-    onEvent: (StatisticsEvent) -> Unit,
+    progress: Float,
+    headline: String,
+    secondary: String,
+    targetLabel: String,
+    onOpenTargetSettings: () -> Unit,
+    targetEditor: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val progress = statisticsDailyGoalProgress(today, settings)
     val colors = MaterialTheme.colorScheme
     val eInkMode = LocalHoshiEInkMode.current
-    val headline = when (settings.dailyTargetType) {
-        DailyTargetType.Characters -> formatStatisticsGroupedCount(today.totalCharacters)
-        DailyTargetType.Duration -> {
-            val seconds = today.readingSeconds.roundToInt().coerceAtLeast(0)
-            stringResource(R.string.statistics_goal_clock_format, seconds / 60, seconds % 60)
-        }
-    }
-    val secondary = when (settings.dailyTargetType) {
-        DailyTargetType.Characters -> stringResource(R.string.statistics_duration_minutes_format, (today.readingSeconds / 60).roundToInt())
-        DailyTargetType.Duration -> formatStatisticsCharacters(today.totalCharacters)
-    }
     BoxWithConstraints(modifier = modifier.padding(horizontal = 20.dp)) {
         val gaugeHeight = maxWidth / 2 + 5.dp
         Box(modifier = Modifier.fillMaxWidth().height(gaugeHeight), contentAlignment = Alignment.BottomCenter) {
@@ -390,22 +490,13 @@ private fun DailyGoalGauge(
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .clickable { onEvent(StatisticsEvent.OpenTargetSettings) }
+                            .clickable(onClick = onOpenTargetSettings)
                             .padding(horizontal = 6.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(3.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = when (settings.dailyTargetType) {
-                                DailyTargetType.Characters -> stringResource(
-                                    R.string.statistics_goal_characters_link_format,
-                                    formatStatisticsGroupedCount(settings.dailyCharacterTarget),
-                                )
-                                DailyTargetType.Duration -> stringResource(
-                                    R.string.statistics_goal_minutes_link_format,
-                                    settings.dailyDurationTargetMinutes,
-                                )
-                            },
+                            text = targetLabel,
                             style = MaterialTheme.typography.labelLarge,
                             color = colors.onSurfaceVariant,
                             textAlign = TextAlign.Center,
@@ -419,9 +510,7 @@ private fun DailyGoalGauge(
                             modifier = Modifier.size(16.dp),
                         )
                     }
-                    if (targetEditor.isEditorVisible) {
-                        StatisticsGoalPicker(targetEditor, onEvent)
-                    }
+                    targetEditor()
                 }
             }
         }

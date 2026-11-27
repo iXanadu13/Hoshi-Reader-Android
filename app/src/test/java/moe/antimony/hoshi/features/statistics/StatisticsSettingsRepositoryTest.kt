@@ -118,6 +118,27 @@ class StatisticsSettingsRepositoryTest {
         }
     }
 
+    @Test
+    fun persistsLookupGoalSettingsSeparatelyFromReadingGoals() = runBlocking {
+        repository().use { repository ->
+            repository.update {
+                it.copy(
+                    dailyCharacterTarget = 5_000,
+                    dailyLookupTargetType = LookupTargetType.Duration,
+                    dailyLookupCountTarget = 73,
+                    dailyLookupDurationTargetMinutes = 42,
+                )
+            }
+
+            val settings = repository.settings.first()
+            assertEquals(DailyTargetType.Characters, settings.dailyTargetType)
+            assertEquals(5_000, settings.dailyCharacterTarget)
+            assertEquals(LookupTargetType.Duration, settings.dailyLookupTargetType)
+            assertEquals(75, settings.dailyLookupCountTarget)
+            assertEquals(40, settings.dailyLookupDurationTargetMinutes)
+        }
+    }
+
     private fun repository(): RepositoryHandle {
         val scope = CoroutineScope(Dispatchers.IO + Job())
         val dataStore = PreferenceDataStoreFactory.create(

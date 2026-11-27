@@ -33,12 +33,14 @@ internal data class StatisticsSnapshot(
     val availableYears: List<Int>,
     val skippedCorruptBookIds: Set<String> = emptySet(),
     val readErrors: Map<String, Throwable> = emptyMap(),
+    val lookupDays: List<LookupStatisticsDay> = emptyList(),
 )
 
 @Singleton
 internal class AndroidStatisticsRepository @Inject constructor(
     private val statisticsStore: BookStatisticsStore,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val lookupStatistics: LookupStatisticsRepository = EmptyLookupStatisticsRepository,
 ) : StatisticsRepository {
     override suspend fun loadSnapshot(): StatisticsSnapshot = withContext(ioDispatcher) {
         val stored = statisticsStore.loadSnapshot()
@@ -68,7 +70,13 @@ internal class AndroidStatisticsRepository @Inject constructor(
                 bookContributions = contributions.sortedBy { it.title.lowercase() },
             )
         }
-        StatisticsSnapshot(days, days.map { it.date.year }.distinct().sortedDescending(), stored.corruptBookIds + readErrors.keys, readErrors)
+        StatisticsSnapshot(
+            days = days,
+            availableYears = days.map { it.date.year }.distinct().sortedDescending(),
+            skippedCorruptBookIds = stored.corruptBookIds + readErrors.keys,
+            readErrors = readErrors,
+            lookupDays = lookupStatistics.load(),
+        )
     }
 
     override suspend fun loadBookStatistics(folder: String): StatisticsBookRecords? =

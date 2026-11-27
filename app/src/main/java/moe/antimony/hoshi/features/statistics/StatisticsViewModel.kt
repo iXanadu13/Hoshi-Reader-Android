@@ -47,6 +47,7 @@ internal class StatisticsViewModel internal constructor(
         @DefaultDispatcher calculationDispatcher: CoroutineDispatcher,
         statisticsStore: moe.antimony.hoshi.epub.BookStatisticsStore,
         syncStorage: moe.antimony.hoshi.features.sync.SyncStorage,
+        lookupStatisticsRepository: LookupStatisticsRepository,
     ) : this(
         repository = repository,
         settings = settingsRepository.settings,
@@ -58,7 +59,7 @@ internal class StatisticsViewModel internal constructor(
     ) {
         val syncReload = SyncReloadScheduler(scope, { syncStorage.applyReaderState != null }, ::reload)
         scope.launch {
-            combine(statisticsStore.changes, syncStorage.booksChanged, resetMinutes) { _, _, _ -> Unit }
+            combine(statisticsStore.changes, syncStorage.booksChanged, lookupStatisticsRepository.changes, resetMinutes) { _, _, _, _ -> Unit }
                 .collect { syncReload.schedule() }
         }
     }
@@ -153,6 +154,15 @@ internal class StatisticsViewModel internal constructor(
 
     fun onEvent(event: StatisticsEvent) {
         when (event) {
+            is StatisticsEvent.SelectMetricMode -> selection.update { current ->
+                current.copy(
+                    metric = event.mode,
+                    referenceDate = null,
+                    selectedBucketKey = null,
+                    isTargetEditorVisible = false,
+                    isLookupTargetEditorVisible = false,
+                )
+            }
             StatisticsEvent.OpenTargetSettings -> selection.update { it.copy(isTargetEditorVisible = true, targetError = null) }
             StatisticsEvent.DismissTargetSettings -> selection.update { it.copy(isTargetEditorVisible = false, targetError = null) }
             is StatisticsEvent.SelectDailyTargetType -> updateTargets {
@@ -164,12 +174,30 @@ internal class StatisticsViewModel internal constructor(
             is StatisticsEvent.UpdateDailyDurationTargetMinutes -> updateTargets {
                 it.copy(dailyDurationTargetMinutes = event.minutes).coerceStatisticsTargetSettings()
             }
+            StatisticsEvent.OpenLookupTargetSettings -> selection.update {
+                it.copy(isLookupTargetEditorVisible = true, lookupTargetError = null)
+            }
+            StatisticsEvent.DismissLookupTargetSettings -> selection.update {
+                it.copy(isLookupTargetEditorVisible = false, lookupTargetError = null)
+            }
+            is StatisticsEvent.SelectLookupTargetType -> updateLookupTargets {
+                it.copy(dailyLookupTargetType = event.type)
+            }
+            is StatisticsEvent.UpdateDailyLookupCountTarget -> updateLookupTargets {
+                it.copy(dailyLookupCountTarget = event.count).coerceStatisticsTargetSettings()
+            }
+            is StatisticsEvent.UpdateDailyLookupDurationTargetMinutes -> updateLookupTargets {
+                it.copy(dailyLookupDurationTargetMinutes = event.minutes).coerceStatisticsTargetSettings()
+            }
             is StatisticsEvent.SelectRangeMode -> selection.update { current ->
                 current.copy(rangeMode = event.mode, referenceDate = null, selectedBucketKey = null)
             }
             is StatisticsEvent.SelectPeriodPage -> selection.update { current ->
                 val displayed = uiState.value
-                val range = displayed.currentRange
+                val range = when (current.metric) {
+                    StatisticsMetricMode.Reading -> displayed.currentRange
+                    StatisticsMetricMode.Lookup -> displayed.lookupRange
+                }
                 if (range.mode != current.rangeMode || event.index !in 0 until range.pageCount) {
                     current
                 } else {
@@ -181,7 +209,11 @@ internal class StatisticsViewModel internal constructor(
             }
             is StatisticsEvent.SelectTrendBucket -> selection.update { current ->
                 val displayed = uiState.value
-                val valid = event.key == null || displayed.currentRange.trendPoints.any {
+                val range = when (current.metric) {
+                    StatisticsMetricMode.Reading -> displayed.currentRange
+                    StatisticsMetricMode.Lookup -> displayed.lookupRange
+                }
+                val valid = event.key == null || range.trendPoints.any {
                     it.key == event.key && statisticsTrendBucket(current.rangeMode, it.key)?.start?.isAfter(displayed.today.date) == false
                 }
                 if (valid) current.copy(
@@ -221,16 +253,34 @@ internal class StatisticsViewModel internal constructor(
             }
         }
     }
+
+    private fun updateLookupTargets(transform: (StatisticsTargetSettings) -> StatisticsTargetSettings) {
+        scope.launch {
+            try {
+                updateSettings { current -> transform(current).coerceStatisticsTargetSettings() }
+                selection.update { it.copy(lookupTargetError = null) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                selection.update {
+                    it.copy(lookupTargetError = UiText.Resource(R.string.statistics_goal_save_failed).withErrorDetails(error))
+                }
+            }
+        }
+    }
 }
 
 private data class StatisticsSelectionState(
     val today: LocalDate,
     val resetMinutes: Int? = null,
+    val metric: StatisticsMetricMode = StatisticsMetricMode.Reading,
     val rangeMode: StatisticsRangeMode = StatisticsRangeMode.Week,
     val referenceDate: LocalDate? = null,
     val selectedBucketKey: String? = null,
     val isTargetEditorVisible: Boolean = false,
     val targetError: UiText? = null,
+    val isLookupTargetEditorVisible: Boolean = false,
+    val lookupTargetError: UiText? = null,
 )
 
 private fun buildStatisticsUiState(
@@ -257,6 +307,29 @@ private fun buildStatisticsUiState(
         ?.takeIf { !it.end.isBefore(selectedRange.start) && !it.start.isAfter(selectedRange.end) && !it.start.isAfter(today) }
     val detailDays = selectedBucket?.let { bucket -> rangeDays.filter { bucket.contains(it.date) } } ?: rangeDays
     val distributionRows = distributionRows(detailDays)
+
+    val lookupDaysByDate = snapshot.lookupDays.associateBy { it.date }
+    val lookupActivity = snapshot.lookupDays.filter { it.isActive && !it.date.isAfter(today) }
+    val lookupFirstDate = lookupActivity.minOfOrNull { it.date } ?: today
+    val lookupEarliestPeriod = selectedStatisticsRange(rangeMode, lookupFirstDate, today, lookupFirstDate).start
+    val lookupAnchor = minOf(selection.referenceDate ?: today, today).coerceAtLeast(lookupEarliestPeriod)
+    val lookupSelectedRange = selectedStatisticsRange(rangeMode, lookupAnchor, today, lookupFirstDate)
+    val lookupPageCount = statisticsPeriodPageCount(rangeMode, lookupFirstDate, today)
+    val lookupSelectedPage = (lookupPageCount - statisticsPeriodPageCount(rangeMode, lookupAnchor, today))
+        .coerceIn(0, lookupPageCount - 1)
+    val lookupRangeDays = lookupActivity.filter { lookupSelectedRange.contains(it.date) }
+    val lookupRangeSummary = overviewLookupRangeSummary(snapshot.lookupDays, rangeMode, lookupAnchor, today)
+    val lookupTrend = lookupTrendPoints(rangeMode, lookupSelectedRange, lookupRangeDays)
+    val lookupHeatLevels = lookupHeatLevels(lookupActivity)
+    val lookupSelectedBucket = selection.selectedBucketKey?.let { statisticsTrendBucket(rangeMode, it) }
+        ?.takeIf {
+            !it.end.isBefore(lookupSelectedRange.start) &&
+                !it.start.isAfter(lookupSelectedRange.end) &&
+                !it.start.isAfter(today)
+        }
+    val lookupDetailDays = lookupSelectedBucket?.let { bucket ->
+        lookupRangeDays.filter { bucket.contains(it.date) }
+    } ?: lookupRangeDays
     return StatisticsUiState(
         isLoading = isLoading,
         today = todaySummary(daysByDate, today, settings),
@@ -289,9 +362,41 @@ private fun buildStatisticsUiState(
             trendPoints = trendPoints,
             distributionRows = distributionRows,
         ),
+        metric = selection.metric,
+        lookupToday = todayLookupSummary(lookupDaysByDate, today),
+        lookupSettings = StatisticsTargetSettingsUi(
+            values = settings.coerceStatisticsTargetSettings(),
+            isEditorVisible = selection.isLookupTargetEditorVisible,
+            error = selection.lookupTargetError,
+        ),
+        lookupHeatmap = StatisticsHeatmapUi(
+            windowRange = StatisticsDateRange(statisticsStartOfWeek(lookupFirstDate), today),
+            days = lookupActivity.map { StatisticsHeatmapDayUi(it.date, lookupHeatLevels[it.date] ?: 0) },
+        ),
+        lookupRange = CurrentLookupStatisticsUi(
+            mode = rangeMode,
+            range = lookupSelectedRange,
+            pageCount = lookupPageCount,
+            selectedPage = lookupSelectedPage,
+            chartPages = (maxOf(0, lookupSelectedPage - 1)..minOf(lookupPageCount - 1, lookupSelectedPage + 1)).associateWith { page ->
+                val pageAnchor = statisticsPeriodPageAnchor(rangeMode, page, lookupPageCount, today)
+                val pageRange = selectedStatisticsRange(rangeMode, pageAnchor, today, lookupFirstDate)
+                StatisticsChartPage(
+                    points = lookupTrendPoints(rangeMode, pageRange, lookupActivity.filter { pageRange.contains(it.date) }),
+                    averageSeconds = overviewLookupRangeSummary(lookupActivity, rangeMode, pageAnchor, today)
+                        .averageLookupSecondsPerBucket,
+                )
+            },
+            summary = if (lookupSelectedBucket != null) aggregateLookupRange(lookupDetailDays) else lookupRangeSummary,
+            selectedBucket = lookupSelectedBucket,
+            trendAverageSeconds = lookupRangeSummary.averageLookupSecondsPerBucket,
+            periodChangePercent = lookupRangeSummary.averageLookupTimeChangePercent,
+            trendPoints = lookupTrend,
+        ),
         history = statisticsHistorySummary(snapshot.days, today, settings),
+        lookupHistory = lookupHistorySummary(snapshot.lookupDays, today, settings),
         emptyState = StatisticsEmptyState(
-            hasAnyStatistics = snapshot.days.isNotEmpty(),
+            hasAnyStatistics = snapshot.days.isNotEmpty() || snapshot.lookupDays.isNotEmpty(),
             hasPartialReadError = snapshot.skippedCorruptBookIds.isNotEmpty(),
             readError = snapshot.readErrors.takeIf { it.isNotEmpty() }?.let { errors ->
                 UiText.Joined(listOf(UiText.Resource(R.string.statistics_partial_unavailable)) + errors.map { (id, error) ->
