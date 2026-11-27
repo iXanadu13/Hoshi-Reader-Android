@@ -1917,6 +1917,12 @@ function playWordAudio(audioUrl, entry = null) {
     }
 }
 
+function openDictionaryLookup() {
+    const text = String(window.popupLookupText || '').trim();
+    if (!text) return;
+    window.webkit?.messageHandlers?.openDictionary?.postMessage(text);
+}
+
 function createButtonSlot(kind, entryIndex, enabled = true, formatId = null, formatIcon = 'square') {
     const slot = el('button', {
         className: 'button-slot',
@@ -1927,7 +1933,7 @@ function createButtonSlot(kind, entryIndex, enabled = true, formatId = null, for
         'data-format-icon': formatIcon
     });
     slot.type = 'button';
-    slot.setAttribute('aria-label', kind === 'audio' ? 'Play audio' : kind === 'notes' ? 'Show Anki notes' : 'Add to Anki');
+    slot.setAttribute('aria-label', kind === 'dictionary' ? 'Open in dictionary' : kind === 'audio' ? 'Play audio' : kind === 'notes' ? 'Show Anki notes' : 'Add to Anki');
     let audioLongPressTimer = null;
     let audioLongPressed = false;
     let audioPointerStart = null;
@@ -1982,6 +1988,8 @@ function createButtonSlot(kind, entryIndex, enabled = true, formatId = null, for
             mineEntryAtIndex(entryIndex, formatId, buttonsContainer);
         } else if (kind === 'notes') {
             showNotesAtIndex(entryIndex, formatId);
+        } else if (kind === 'dictionary') {
+            openDictionaryLookup();
         }
     });
     slot.appendChild(el('span', { className: 'button-slot-icon' }));
@@ -2017,7 +2025,7 @@ function applyButtonSlotVisualState(slot) {
     slot.dataset.state = state;
     slot.dataset.enabled = String(enabled);
     const formatIcon = (slot.dataset.formatIcon || 'square').replace('-small', '');
-    const iconName = kind === 'audio'
+    const iconName = kind === 'dictionary' ? 'search' : kind === 'audio'
         ? (state === 'error' ? 'volume_off' : 'volume_up')
         : kind === 'notes' ? 'search'
         : formatIcon === 'circle' ? (state === 'duplicate' ? 'check_circle' : 'add_circle')
@@ -2230,6 +2238,10 @@ function createEntryHeader(entry, idx) {
     }
 
     const buttonsContainer = el('div', { className: 'header-buttons' });
+
+    if (idx === 0 && window.popupLookupText?.trim()) {
+        buttonsContainer.appendChild(createButtonSlot('dictionary', idx));
+    }
 
     appendAnkiFormatButtons(buttonsContainer, idx);
     refreshAnkiDuplicateStates(idx, buttonsContainer);

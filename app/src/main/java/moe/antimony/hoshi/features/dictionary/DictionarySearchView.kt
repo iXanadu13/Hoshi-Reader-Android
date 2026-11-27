@@ -440,6 +440,7 @@ internal fun DictionarySearchView(
     fun handleReaderPopupBridgeMessage(message: ReaderLookupPopupBridgeMessage) {
         when (message) {
             is ReaderLookupPopupBridgeMessage.OpenLink -> context.openPopupExternalLink(message.url)
+            is ReaderLookupPopupBridgeMessage.OpenDictionaryLookup -> context.openDictionaryLookup(message.query)
             is ReaderLookupPopupBridgeMessage.TapOutside -> {
                 if (message.popupId == DictionarySearchRootPopupId) {
                     childHistories = emptyMap()

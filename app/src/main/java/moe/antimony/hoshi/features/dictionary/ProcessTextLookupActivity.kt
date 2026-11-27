@@ -372,6 +372,9 @@ private fun ProcessTextLookupOverlay(
         fun handleReaderPopupBridgeMessage(message: ReaderLookupPopupBridgeMessage) {
             when (message) {
                 is ReaderLookupPopupBridgeMessage.OpenLink -> context.openPopupExternalLink(message.url)
+                is ReaderLookupPopupBridgeMessage.OpenDictionaryLookup -> {
+                    if (context.openDictionaryLookup(message.query)) onClose()
+                }
                 is ReaderLookupPopupBridgeMessage.TapOutside -> {
                     val index = popupIndex(message.popupId).takeIf { it >= 0 } ?: return
                     setIframePopups(closeChildPopupsAndClearSelection(popups, index))

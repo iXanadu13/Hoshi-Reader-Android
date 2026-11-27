@@ -7,6 +7,7 @@ Release notes before v1.3.0 are in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).
 
 ### Added
 
+- Jump from a floating lookup popup to Dictionary search with the selected text.
 - Switch Statistics between reading and dictionary lookup metrics, including lookup count, Dictionary-page time, and lookup Daily Goal tracking.
 - Back up dictionary lookup statistics with dictionary backups, TTU exports, and cloud synchronization.
 - Show the storage used by cached word audio in Audio settings.

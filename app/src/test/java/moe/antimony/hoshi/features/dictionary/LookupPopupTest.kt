@@ -213,6 +213,7 @@ class LookupPopupTest {
         assertEquals(171.0, payload.selectionOffsetY, 0.0)
         assertTrue(payload.popupActionBar)
         assertEquals(3, payload.entriesCount)
+        assertEquals("root", payload.lookupText)
         assertEquals("https://appassets.androidplatform.net/popup/iframe.html", payload.iframeUrl)
         assertEquals("https://appassets.androidplatform.net/popup/iframe.html?v=123", readerLookupPopupIframeUrl(123))
     }

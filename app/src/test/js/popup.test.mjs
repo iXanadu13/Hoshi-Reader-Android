@@ -205,6 +205,7 @@ function popupContext({
     const duplicateCheckMessages = [];
     const showNotesMessages = [];
     const playWordAudioMessages = [];
+    const openDictionaryMessages = [];
     const kanjiRedirectMessages = [];
     const kanjiRedirectCommittedMessages = [];
     let currentDuplicateStates = duplicateStates;
@@ -266,6 +267,11 @@ function popupContext({
                         playWordAudioMessages.push(message);
                     },
                 },
+                openDictionary: {
+                    postMessage(message) {
+                        openDictionaryMessages.push(message);
+                    },
+                },
                 kanjiRedirect: {
                     postMessage(message) {
                         kanjiRedirectMessages.push(message);
@@ -309,6 +315,7 @@ function popupContext({
         duplicateCheckMessages,
         showNotesMessages,
         playWordAudioMessages,
+        openDictionaryMessages,
         kanjiRedirectMessages,
         kanjiRedirectCommittedMessages,
         entriesContainer,
@@ -825,6 +832,19 @@ test('popup action controls remain DOM buttons even if a legacy native button fl
     assert.equal(mineSlot.disabled, true);
     assert.equal(circleSlot.dataset.formatId, 'format-circle');
     assert.match(circleSlot.style.properties.get('--button-icon-url'), /add_circle\.svg/);
+});
+
+test('popup adds a dictionary button for the selected lookup text', () => {
+    const setup = popupContext();
+    setup.context.window.popupLookupText = ' 食べる ';
+
+    const header = setup.context.createEntryHeader({ expression: '猫', reading: '猫' }, 0);
+    const buttons = header.children.find((child) => child.className === 'header-buttons');
+    const dictionaryButton = buttons.children.find((button) => button.dataset.kind === 'dictionary');
+
+    assert.equal(dictionaryButton.getAttribute('aria-label'), 'Open in dictionary');
+    dictionaryButton.dispatch('click', { preventDefault() {}, stopPropagation() {} });
+    assert.deepEqual(setup.openDictionaryMessages, ['食べる']);
 });
 
 test('popup renders ordered format buttons with independent icon and disabled state', () => {

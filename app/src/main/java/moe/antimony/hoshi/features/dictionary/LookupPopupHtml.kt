@@ -184,6 +184,7 @@ internal object LookupPopupHtml {
                     window.webkit = {
                         messageHandlers: {
                             openLink: { postMessage: function(url) { window.HoshiAndroidPopup.postMessage('openLink', url); } },
+                            openDictionary: { postMessage: function(text) { window.HoshiAndroidPopup.postMessage('openDictionary', text); } },
                             textSelected: { postMessage: function(selection) { window.HoshiAndroidPopup.postMessage('textSelected', selection); } },
                             tapOutside: { postMessage: function() { window.HoshiAndroidPopup.postMessage('tapOutside'); } },
                             swipeDismiss: { postMessage: function() { window.HoshiAndroidPopup.postMessage('swipeDismiss'); } },
@@ -323,6 +324,7 @@ internal object LookupPopupHtml {
                             }
                             if (message.type === 'resetPopup') {
                                 window.popupId = null;
+                                window.popupLookupText = null;
                                 closeOverlay();
                                 window.hoshiSelection?.clearSelection();
                                 window.resetPopupResults?.();
@@ -331,6 +333,7 @@ internal object LookupPopupHtml {
                             }
                             if (message.type === 'renderPopup') {
                                 window.popupId = message.popupId || null;
+                                window.popupLookupText = typeof message.lookupText === 'string' ? message.lookupText : null;
                                 closeOverlay();
                                 window.entryCount = message.entriesCount || 0;
                                 var initialEntries = [];

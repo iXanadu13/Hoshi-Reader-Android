@@ -38,6 +38,17 @@ class ReaderLookupPopupBridgeMessageTest {
         )
 
         assertEquals(
+            ReaderLookupPopupBridgeMessage.OpenDictionaryLookup(
+                popupId = "root",
+                messageId = null,
+                query = "食べる",
+            ),
+            ReaderLookupPopupBridgeMessage.fromJson(
+                """{"name":"openDictionary","popupId":"root","body":" 食べる "}""",
+            ),
+        )
+
+        assertEquals(
             ReaderLookupPopupBridgeMessage.TapOutside(popupId = "root", messageId = null),
             ReaderLookupPopupBridgeMessage.fromJson("""{"name":"tapOutside","popupId":"root"}"""),
         )
@@ -181,5 +192,6 @@ class ReaderLookupPopupBridgeMessageTest {
         assertNull(ReaderLookupPopupBridgeMessage.fromJson("""{"name":"openLink","body":"https://example.com"}"""))
         assertNull(ReaderLookupPopupBridgeMessage.fromJson("""{"name":"textSelected","popupId":"root","body":{}}"""))
         assertNull(ReaderLookupPopupBridgeMessage.fromJson("""{"name":"getEntry","id":"1","popupId":"root","body":-1}"""))
+        assertNull(ReaderLookupPopupBridgeMessage.fromJson("""{"name":"openDictionary","popupId":"root","body":"  "}"""))
     }
 }

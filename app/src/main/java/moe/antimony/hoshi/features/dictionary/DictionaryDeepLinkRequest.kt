@@ -1,9 +1,11 @@
 package moe.antimony.hoshi.features.dictionary
 
+import android.content.Context
 import android.content.Intent
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import moe.antimony.hoshi.MainActivity
 
 internal const val OpenDictionaryLookupAction = "moe.antimony.hoshi.action.OPEN_DICTIONARY_LOOKUP"
 internal const val OpenDictionaryLookupTextExtra = "moe.antimony.hoshi.extra.DICTIONARY_LOOKUP_TEXT"
@@ -82,4 +84,18 @@ data class PendingDictionaryLookupRequest(
                 requestId = requestId,
             )
     }
+}
+
+internal fun Context.openDictionaryLookup(query: String): Boolean {
+    val text = query.trim().takeIf(String::isNotEmpty) ?: return false
+    startActivity(
+        Intent(this, MainActivity::class.java).apply {
+            action = OpenDictionaryLookupAction
+            putExtra(OpenDictionaryLookupTextExtra, text)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        },
+    )
+    return true
 }

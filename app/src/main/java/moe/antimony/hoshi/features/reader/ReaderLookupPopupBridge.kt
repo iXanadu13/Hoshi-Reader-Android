@@ -112,6 +112,7 @@ internal data class ReaderLookupPopupFramePayload(
     val ttsVisible: Boolean = false,
     val ttsWasPaused: Boolean = false,
     val ttsIsPlaying: Boolean = false,
+    val lookupText: String? = null,
 ) {
     companion object {
         fun fromPopup(
@@ -183,6 +184,7 @@ internal data class ReaderLookupPopupFramePayload(
                 ),
                 iframeUrl = iframeUrl,
                 sourceText = sourceText,
+                lookupText = state.selection.text,
             )
         }
     }
@@ -217,6 +219,12 @@ internal sealed class ReaderLookupPopupBridgeMessage {
         override val popupId: String,
         override val messageId: String?,
         val url: String,
+    ) : ReaderLookupPopupBridgeMessage()
+
+    data class OpenDictionaryLookup(
+        override val popupId: String,
+        override val messageId: String?,
+        val query: String,
     ) : ReaderLookupPopupBridgeMessage()
 
     data class TextSelected(
@@ -352,6 +360,11 @@ internal sealed class ReaderLookupPopupBridgeMessage {
                     popupId = popupId,
                     messageId = messageId,
                     url = payload.string("body") ?: return null,
+                )
+                "openDictionary" -> OpenDictionaryLookup(
+                    popupId = popupId,
+                    messageId = messageId,
+                    query = payload.string("body")?.trim()?.takeIf(String::isNotEmpty) ?: return null,
                 )
                 "textSelected" -> TextSelected(
                     popupId = popupId,

@@ -148,6 +148,9 @@
             message.sourceText = payload.sourceText;
             message.sourceSentenceOffset = payload.sourceSentenceOffset ?? null;
         }
+        if (payload.lookupText != null) {
+            message.lookupText = payload.lookupText;
+        }
         return message;
     }
 
@@ -183,6 +186,7 @@
         if (previousHadHistory) return true;
         const previousContentKey = previous.contentKey || null;
         const nextContentKey = next.contentKey || null;
+        if ((previous.lookupText ?? null) !== (next.lookupText ?? null)) return true;
         if (previousContentKey !== null || nextContentKey !== null) {
             return previousContentKey !== nextContentKey;
         }

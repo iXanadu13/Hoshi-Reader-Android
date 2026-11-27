@@ -377,6 +377,17 @@ test('iframe render messages forward only non-null source text', () => {
     }
 });
 
+test('iframe render messages forward the popup lookup text', () => {
+    const scene = popupHost();
+    scene.host.renderStack({ popups: [{ ...rootPopupPayload(), lookupText: '食べる' }] });
+    const iframe = scene.document.getElementById('hoshi-reader-popup-layer').children[0].querySelector('.hoshi-reader-popup-iframe');
+    const messages = [];
+    iframe.contentWindow.postMessage = message => messages.push(message);
+    iframe.dispatchEvent('load');
+
+    assert.equal(messages.find(message => message.type === 'renderPopup').lookupText, '食べる');
+});
+
 test('unmatched source submissions replace old entries and subsequent source-only content', () => {
     const scene = popupHost();
     const original = { ...rootPopupPayload(), entriesCount: 1, initialEntryJson: '{"expression":"猫"}', contentKey: 'original' };
