@@ -6,10 +6,12 @@ import android.content.res.Configuration
 import android.webkit.WebView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import moe.antimony.hoshi.network.HttpProxyRuntime
 
 /** All app WebViews share the native DayNight configuration, including first construction. */
 internal open class HoshiWebView(context: Context) : WebView(context) {
     init {
+        HttpProxyRuntime.applyWebViewProxy()
         val activity = context.appCompatActivity()
         val expected = when (AppCompatDelegate.getDefaultNightMode()) {
             AppCompatDelegate.MODE_NIGHT_YES -> Configuration.UI_MODE_NIGHT_YES

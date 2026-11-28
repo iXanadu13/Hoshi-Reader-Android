@@ -328,8 +328,10 @@ Validation guidance and failure injection methods are in
   credentials/query/fragment in its base URL.
 - `network/HttpProxy.kt` owns the optional app-wide HTTP proxy. It applies one
   validated `host:port` to Java `ProxySelector` (covering `HttpURLConnection`
-  and OkHttp) and AndroidX WebView proxy override, while leaving localhost and
-  app-owned WebView assets direct. Proxy credentials, SOCKS, PAC and bypass-list
+  and OkHttp), explicit native HTTP connections, and AndroidX WebView proxy
+  override when the first app WebView is created, while leaving localhost and
+  app-owned WebView assets direct. WebView provider initialization is kept out
+  of `Application.onCreate()`. Proxy credentials, SOCKS, PAC and bypass-list
   editing are intentionally unsupported.
 - `OnlineTtsTransport` disables redirects, uses normal TLS verification and
   cancels the active HTTP call/socket with coroutine cancellation. It redacts

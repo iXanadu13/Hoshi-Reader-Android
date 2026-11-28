@@ -111,6 +111,7 @@ internal object HttpProxyRuntime {
     private val lock = Any()
     private val selector = HttpProxySelector(ProxySelector.getDefault())
     private var applicationContext: Context? = null
+    @Volatile
     private var webViewOverrideApplied = false
 
     fun initialize(context: Context) {
@@ -126,7 +127,25 @@ internal object HttpProxyRuntime {
             installSelectorLocked()
             selector.proxy = proxy
         }
+    }
+
+    /**
+     * Applies the current proxy to WebView only after the app is already using WebView.
+     * WebView provider initialization must not be part of Application.onCreate().
+     */
+    fun applyWebViewProxy() {
+        val proxy = synchronized(lock) { selector.proxy }
         applyWebViewProxy(proxy)
+    }
+
+    fun openHttpConnection(url: URL): HttpURLConnection {
+        val selectedProxy = runCatching { selector.select(url.toURI()).firstOrNull() }.getOrNull()
+        val connection = when {
+            selectedProxy == null -> url.openConnection()
+            selectedProxy.type() == Proxy.Type.DIRECT -> url.openConnection(Proxy.NO_PROXY)
+            else -> url.openConnection(selectedProxy)
+        }
+        return connection as HttpURLConnection
     }
 
     private fun installSelectorLocked() {
@@ -138,6 +157,7 @@ internal object HttpProxyRuntime {
     }
 
     private fun applyWebViewProxy(proxy: HttpProxy?) {
+        if (proxy == null && !webViewOverrideApplied) return
         val context = applicationContext ?: return
         if (!WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) return
         runCatching {
@@ -188,6 +208,7 @@ internal class HttpProxySettingsRepository @Inject constructor(
         dataStore.edit { preferences -> preferences.writeHttpProxySettings(next) }
         HttpProxyRuntime.initialize(context)
         HttpProxyRuntime.apply(next)
+        HttpProxyRuntime.applyWebViewProxy()
     }
 
     suspend fun test(proxy: HttpProxy, url: String) = withContext(ioDispatcher) {

@@ -16,6 +16,7 @@ import java.io.ByteArrayInputStream
 import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
+import moe.antimony.hoshi.network.HttpProxyRuntime
 
 class AudioRequestHandler(
     private val localAudioRepository: LocalAudioRepository,
@@ -201,7 +202,7 @@ class AudioRequestHandler(
 
 private fun fetchRemoteAudioList(targetUrl: String): ByteArray =
     runCatching {
-        val connection = (URL(targetUrl).openConnection() as HttpURLConnection).apply {
+        val connection = HttpProxyRuntime.openHttpConnection(URL(targetUrl)).apply {
             connectTimeout = 4000
             readTimeout = 4000
             requestMethod = "GET"

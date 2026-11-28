@@ -5,6 +5,7 @@ import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import javax.inject.Inject
+import moe.antimony.hoshi.network.HttpProxyRuntime
 
 internal interface DictionaryRemoteDataSource {
     fun fetchIndex(url: String): DictionaryIndex
@@ -35,7 +36,7 @@ internal class UrlDictionaryRemoteDataSource(
         }
 
     private fun openConnection(url: String): HttpURLConnection =
-        (URL(url).openConnection() as HttpURLConnection).apply {
+        HttpProxyRuntime.openHttpConnection(URL(url)).apply {
             connectTimeout = 15_000
             readTimeout = 30_000
             instanceFollowRedirects = true

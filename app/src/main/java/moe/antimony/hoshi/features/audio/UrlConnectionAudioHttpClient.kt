@@ -6,6 +6,7 @@ import javax.inject.Inject
 import kotlin.io.inputStream
 import kotlin.io.outputStream
 import kotlin.toString
+import moe.antimony.hoshi.network.HttpProxyRuntime
 
 class UrlConnectionAudioHttpClient @Inject constructor() : AudioHttpClient {
     override fun request(url: String, form: Map<String, String>?): AudioHttpResponse = requestAudio(url, form)
@@ -13,7 +14,7 @@ class UrlConnectionAudioHttpClient @Inject constructor() : AudioHttpClient {
 
 internal fun requestAudio(url: String, form: Map<String, String>?): AudioHttpResponse =
     runCatching {
-        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+        val connection = HttpProxyRuntime.openHttpConnection(URL(url)).apply {
             connectTimeout = 4000
             readTimeout = 4000
             requestMethod = if (form == null) "GET" else "POST"
