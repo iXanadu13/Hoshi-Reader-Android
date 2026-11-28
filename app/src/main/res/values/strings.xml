@@ -127,6 +127,19 @@
     <string name="settings_diagnostics">Diagnostics</string>
     <string name="settings_about">About</string>
     <string name="settings_backup" comment="Advanced settings row label, intentionally matching the Backup action noun.">Backup</string>
+    <string name="http_proxy_title">HTTP proxy</string>
+    <string name="http_proxy_enabled">Enable proxy</string>
+    <string name="http_proxy_enabled_description">Route app HTTP and HTTPS requests through the proxy server.</string>
+    <string name="http_proxy_address">Proxy address</string>
+    <string name="http_proxy_address_hint">http://127.0.0.1:7890</string>
+    <string name="http_proxy_test_url">Test URL</string>
+    <string name="http_proxy_test_url_hint">https://www.google.com/generate_204</string>
+    <string name="http_proxy_save_and_test">Save and test</string>
+    <string name="http_proxy_invalid_address">Enter a valid HTTP proxy address, such as http://127.0.0.1:7890.</string>
+    <string name="http_proxy_test_first">Save and test the proxy before enabling it.</string>
+    <string name="http_proxy_test_success">Proxy test succeeded.</string>
+    <string name="http_proxy_test_failed">Proxy test failed.</string>
+    <string name="http_proxy_save_failed">Could not save proxy settings.</string>
     <string name="settings_title" comment="Shared label for settings page titles distinct from the main tab key.">Settings</string>
     <string name="settings_language">Language</string>
     <string name="language_follow_system">Follow system</string>

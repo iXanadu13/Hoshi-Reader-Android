@@ -44,7 +44,7 @@ Names without an extension are searchable types, not necessarily filenames.
 | TTS source text, speech, playback | `features/tts/TtsBookRepository.kt`, `features/tts/TtsAudioRepository.kt`, `TtsEngineRouter`, `TtsPlaybackController`, `TtsPlaybackService` | Source extraction, synthesis/cache, provider adapters and sentence transport |
 | [Errors and diagnostics](#errors-and-diagnostics) | `ui/ErrorDetails.kt`, `ui/ErrorDiagnosticEvents.kt`, `features/diagnostics/NonfatalDiagnostics.kt` | Visible error adaptation, original failure events and application-owned persistence |
 | WebView debugging, release inspection | `features/diagnostics/WebViewDebuggingSettings.kt`, `features/diagnostics/WebViewDebuggingSetting.kt` | App-local persisted debugging policy and the Diagnostics toggle |
-| [Network and credentials](#network-and-credential-boundaries) | `network/PrivateHttpHost.kt`, `features/tts/OnlineTtsTransport.kt`, `TtsCredentialCipher` | Endpoint policy, cancellable transport, secret storage and diagnostic redaction |
+| [Network and credentials](#network-and-credential-boundaries) | `network/PrivateHttpHost.kt`, `network/HttpProxy.kt`, `features/tts/OnlineTtsTransport.kt`, `TtsCredentialCipher` | Endpoint policy, app HTTP proxy, cancellable transport, secret storage and diagnostic redaction |
 | App updates, About | `features/update/`, `.github/workflows/` and `tools/` (repo root) | Stable releases, manual previews, APK downloads and build provenance |
 
 ## Common implementation contracts
@@ -326,6 +326,11 @@ Validation guidance and failure injection methods are in
   `TtsCustomSource`: internet hosts require HTTPS; HTTP is limited to the accepted
   private/local hosts. Custom TTS retains proxy path prefixes and rejects embedded
   credentials/query/fragment in its base URL.
+- `network/HttpProxy.kt` owns the optional app-wide HTTP proxy. It applies one
+  validated `host:port` to Java `ProxySelector` (covering `HttpURLConnection`
+  and OkHttp) and AndroidX WebView proxy override, while leaving localhost and
+  app-owned WebView assets direct. Proxy credentials, SOCKS, PAC and bypass-list
+  editing are intentionally unsupported.
 - `OnlineTtsTransport` disables redirects, uses normal TLS verification and
   cancels the active HTTP call/socket with coroutine cancellation. It redacts
   request credentials from service/transport diagnostics before errors leave

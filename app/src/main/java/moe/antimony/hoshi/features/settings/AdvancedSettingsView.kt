@@ -16,6 +16,7 @@ import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.RecordVoiceOver
 import androidx.compose.material.icons.rounded.Storage
+import androidx.compose.material.icons.rounded.VpnKey
 import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -86,6 +87,13 @@ fun AdvancedSettingsView(
         )
         return
     }
+    if (destination == AdvancedDestination.HttpProxy) {
+        HttpProxySettingsView(
+            onClose = { destination = null },
+            modifier = modifier,
+        )
+        return
+    }
 
     val colorScheme = MaterialTheme.colorScheme
     StaticSettingsDetailScaffold(
@@ -151,6 +159,7 @@ internal enum class AdvancedDestination {
     Syncing,
     AnkiConnect,
     BookCoverWallpaper,
+    HttpProxy,
 }
 
 internal enum class AdvancedSettingsIcon {
@@ -161,6 +170,7 @@ internal enum class AdvancedSettingsIcon {
     AnkiConnect,
     ExternalDrive,
     Wallpaper,
+    HttpProxy,
 }
 
 internal data class AdvancedSettingsRow(
@@ -202,6 +212,11 @@ internal fun advancedSettingsSections(): List<AdvancedSettingsSection> =
                     destination = AdvancedDestination.AnkiConnect,
                     icon = AdvancedSettingsIcon.AnkiConnect,
                 ),
+                AdvancedSettingsRow(
+                    titleRes = R.string.http_proxy_title,
+                    destination = AdvancedDestination.HttpProxy,
+                    icon = AdvancedSettingsIcon.HttpProxy,
+                ),
             ),
         ),
         AdvancedSettingsSection(
@@ -233,4 +248,5 @@ private fun AdvancedSettingsIcon.imageVector(): ImageVector =
         AdvancedSettingsIcon.AnkiConnect -> Icons.Rounded.Link
         AdvancedSettingsIcon.ExternalDrive -> Icons.Rounded.Storage
         AdvancedSettingsIcon.Wallpaper -> Icons.Rounded.Wallpaper
+        AdvancedSettingsIcon.HttpProxy -> Icons.Rounded.VpnKey
     }

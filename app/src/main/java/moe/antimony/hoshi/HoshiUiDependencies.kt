@@ -34,6 +34,7 @@ import moe.antimony.hoshi.features.update.UpdateScheduler
 import moe.antimony.hoshi.profiles.ProfileActivationService
 import moe.antimony.hoshi.profiles.ProfileRepository
 import moe.antimony.hoshi.features.update.UpdateSettingsRepository
+import moe.antimony.hoshi.network.HttpProxySettingsRepository
 
 internal class HoshiUiDependencies @Inject constructor(
     @param:ApplicationScope private val appScopeProvider: Lazy<CoroutineScope>,
@@ -48,6 +49,7 @@ internal class HoshiUiDependencies @Inject constructor(
     private val statisticsDateProviderProvider: Lazy<StatisticsDateProvider>,
     private val syncSettingsRepositoryProvider: Lazy<SyncSettingsRepository>,
     private val updateSettingsRepositoryProvider: Lazy<UpdateSettingsRepository>,
+    private val httpProxySettingsRepositoryProvider: Lazy<HttpProxySettingsRepository>,
     private val updateDownloadStoreProvider: Lazy<UpdateDownloadStore>,
     private val epubBookParserProvider: Lazy<EpubBookParser>,
     private val readerPageCountRepositoryProvider: Lazy<ReaderPageCountRepository>,
@@ -79,6 +81,7 @@ internal class HoshiUiDependencies @Inject constructor(
     val statisticsDateProvider: StatisticsDateProvider get() = statisticsDateProviderProvider.get()
     val syncSettingsRepository: SyncSettingsRepository get() = syncSettingsRepositoryProvider.get()
     val updateSettingsRepository: UpdateSettingsRepository get() = updateSettingsRepositoryProvider.get()
+    val httpProxySettingsRepository: HttpProxySettingsRepository get() = httpProxySettingsRepositoryProvider.get()
     val updateDownloadStore: UpdateDownloadStore get() = updateDownloadStoreProvider.get()
     val epubBookParser: EpubBookParser get() = epubBookParserProvider.get()
     val readerPageCountRepository: ReaderPageCountRepository get() = readerPageCountRepositoryProvider.get()

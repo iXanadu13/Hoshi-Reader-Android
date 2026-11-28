@@ -127,6 +127,19 @@
     <string name="settings_diagnostics">诊断</string>
     <string name="settings_about">关于</string>
     <string name="settings_backup" comment="Advanced settings row label, intentionally matching the Backup action noun.">备份</string>
+    <string name="http_proxy_title">HTTP 代理</string>
+    <string name="http_proxy_enabled">启用代理</string>
+    <string name="http_proxy_enabled_description">让应用的 HTTP 和 HTTPS 请求通过代理服务器。</string>
+    <string name="http_proxy_address">代理地址</string>
+    <string name="http_proxy_address_hint">http://127.0.0.1:7890</string>
+    <string name="http_proxy_test_url">测试地址</string>
+    <string name="http_proxy_test_url_hint">https://www.google.com/generate_204</string>
+    <string name="http_proxy_save_and_test">保存并测试</string>
+    <string name="http_proxy_invalid_address">请输入有效的 HTTP 代理地址，例如 http://127.0.0.1:7890。</string>
+    <string name="http_proxy_test_first">请先保存并测试代理，再启用它。</string>
+    <string name="http_proxy_test_success">代理测试成功。</string>
+    <string name="http_proxy_test_failed">代理测试失败。</string>
+    <string name="http_proxy_save_failed">无法保存代理设置。</string>
     <string name="settings_title" comment="Shared label for settings page titles distinct from the main tab key.">设置</string>
     <string name="settings_language">语言</string>
     <string name="language_follow_system">跟随系统</string>

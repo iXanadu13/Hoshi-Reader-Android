@@ -32,6 +32,7 @@ import moe.antimony.hoshi.features.update.UpdateApkCleanup
 import moe.antimony.hoshi.features.update.UpdateScheduler
 import moe.antimony.hoshi.features.update.UpdateStartupSnapshot
 import moe.antimony.hoshi.features.update.UpdateDownloadStore
+import moe.antimony.hoshi.network.HttpProxySettingsRepository
 
 @HiltAndroidApp
 class HoshiApplication : Application(), Configuration.Provider, SingletonImageLoader.Factory {
@@ -44,6 +45,7 @@ class HoshiApplication : Application(), Configuration.Provider, SingletonImageLo
     @Inject internal lateinit var updateDownloadStore: UpdateDownloadStore
     @Inject internal lateinit var updateScheduler: Lazy<UpdateScheduler>
     @Inject internal lateinit var googleDriveSyncLifecycle: Lazy<GoogleDriveSyncLifecycle>
+    @Inject internal lateinit var httpProxySettingsRepository: HttpProxySettingsRepository
     @Inject internal lateinit var workerFactory: HiltWorkerFactory
     @Inject @IoDispatcher internal lateinit var ioDispatcher: CoroutineDispatcher
     @Inject internal lateinit var bookRepository: Lazy<BookRepository>
@@ -63,6 +65,7 @@ class HoshiApplication : Application(), Configuration.Provider, SingletonImageLo
         applicationScope.launch(ioDispatcher) {
             bookRepository.get().migrateCacheGroups(cacheDir, noBackupFilesDir.resolve("book-cache-group-v1"))
         }
+        runBlocking(ioDispatcher) { httpProxySettingsRepository.initialize() }
         prepareUpdateStartupState()
         updateScheduler.get().sync()
         dictionaryAutoUpdateScheduler.get().registerProcessForegroundChecks()
