@@ -12,6 +12,7 @@ Release notes before v1.3.0 are in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).
 - Back up dictionary lookup statistics with dictionary backups, TTU exports, and cloud synchronization.
 - Show the storage used by cached word audio in Audio settings.
 - Configure and test an HTTP proxy for the app's HTTP and HTTPS requests.
+- Control whether pulling down and releasing on Dictionary clears the search input.
 
 ### Fixed
 

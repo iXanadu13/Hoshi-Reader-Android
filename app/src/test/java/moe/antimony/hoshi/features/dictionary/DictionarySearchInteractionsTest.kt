@@ -42,6 +42,15 @@ class DictionarySearchInteractionsTest {
                 hasQuery = false,
             ),
         )
+        assertEquals(
+            DictionaryPullResetAction.None,
+            dictionaryPullResetAction(
+                distancePx = 160f,
+                thresholdPx = DictionaryPullResetTriggerDistanceDp.toFloat(),
+                hasQuery = true,
+                pullToClearQuery = false,
+            ),
+        )
     }
 
     @Test

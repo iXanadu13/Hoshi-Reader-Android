@@ -1283,6 +1283,10 @@ private fun DictionarySettingsView(
                 }
                 SectionLabel(stringResource(R.string.dictionary_settings_behaviour))
                 SettingsGroup {
+                    ToggleRow(stringResource(R.string.dictionary_pull_to_clear_query), settings.pullToClearQuery) {
+                        onSettingsChange { current -> current.copy(pullToClearQuery = it) }
+                    }
+                    GroupDivider()
                     ToggleRow(stringResource(R.string.dictionary_compact_glossaries), settings.compactGlossaries) {
                         onSettingsChange { current -> current.copy(compactGlossaries = it) }
                     }

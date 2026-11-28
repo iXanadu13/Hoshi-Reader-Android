@@ -65,6 +65,7 @@ class ProfileDictionarySettingsRepositoryTest {
                 dictionaryUpdateInterval = DictionaryUpdateInterval.Daily,
                 lastDictionaryUpdateEpochMillis = 1_900_000_000_000L,
                 dictionaryTabDefault = true,
+                pullToClearQuery = false,
                 scanNonJapaneseText = false,
                 maxResults = 12,
                 scanLength = 20,
@@ -86,6 +87,7 @@ class ProfileDictionarySettingsRepositoryTest {
 
         val copiedEnglishSettings = repository.settings.first()
         assertTrue(copiedEnglishSettings.dictionaryTabDefault)
+        assertFalse(copiedEnglishSettings.pullToClearQuery)
         assertFalse(copiedEnglishSettings.scanNonJapaneseText)
         assertEquals(12, copiedEnglishSettings.maxResults)
         assertEquals(20, copiedEnglishSettings.scanLength)
@@ -106,6 +108,7 @@ class ProfileDictionarySettingsRepositoryTest {
                 dictionaryUpdateInterval = DictionaryUpdateInterval.Monthly,
                 lastDictionaryUpdateEpochMillis = 1_910_000_000_000L,
                 dictionaryTabDefault = false,
+                pullToClearQuery = true,
                 scanNonJapaneseText = true,
                 maxResults = 9,
                 scanLength = 10,
@@ -130,6 +133,7 @@ class ProfileDictionarySettingsRepositoryTest {
         assertEquals(1_910_000_000_000L, japaneseSettings.lastDictionaryUpdateEpochMillis)
         assertFalse(japaneseSettings.lowRamDictionaryImport)
         assertTrue(japaneseSettings.dictionaryTabDefault)
+        assertFalse(japaneseSettings.pullToClearQuery)
         assertFalse(japaneseSettings.scanNonJapaneseText)
         assertEquals(12, japaneseSettings.maxResults)
         assertEquals(20, japaneseSettings.scanLength)
@@ -147,6 +151,7 @@ class ProfileDictionarySettingsRepositoryTest {
         profileRepository.activateGlobal(english.id)
         val englishSettings = repository.settings.first()
         assertFalse(englishSettings.dictionaryTabDefault)
+        assertTrue(englishSettings.pullToClearQuery)
         assertTrue(englishSettings.scanNonJapaneseText)
         assertEquals(9, englishSettings.maxResults)
         assertEquals(10, englishSettings.scanLength)

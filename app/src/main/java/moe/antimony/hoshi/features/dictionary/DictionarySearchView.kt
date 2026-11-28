@@ -666,6 +666,7 @@ internal fun DictionarySearchView(
                     resourceHandler = readerPopupResourceHandler,
                     rootAtTop = rootIframeAtTop,
                     popupFrames = iframePayloads,
+                    pullGestureEnabled = uiState.dictionarySettings.pullToClearQuery,
                     onWebViewChanged = { iframeHostWebView = it },
                     onPullStarted = { keyboardController?.hide() },
                     onPullDistance = { distance -> pullDistancePx = distance },
@@ -675,6 +676,7 @@ internal fun DictionarySearchView(
                                 distancePx = distance,
                                 thresholdPx = with(density) { DictionaryPullResetThreshold.toPx() },
                                 hasQuery = uiState.query.isNotEmpty(),
+                                pullToClearQuery = uiState.dictionarySettings.pullToClearQuery,
                             )
                         ) {
                             DictionaryPullResetAction.ClearQueryAndFocus -> clearQueryAndFocus()
@@ -721,12 +723,13 @@ internal fun DictionarySearchView(
                 rootHighlight = null,
             )
         }
-        if (uiState.hasLookupContent && pullDistancePx > 1f) {
+        if (uiState.hasLookupContent && uiState.dictionarySettings.pullToClearQuery && pullDistancePx > 1f) {
             DictionaryPullResetIndicator(
                 distancePx = pullDistancePx,
                 thresholdPx = with(density) { DictionaryPullResetThreshold.toPx() },
                 topPaddingDp = searchBarBottomDp,
                 hasQuery = uiState.query.isNotEmpty(),
+                pullToClearQuery = uiState.dictionarySettings.pullToClearQuery,
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
@@ -761,6 +764,7 @@ private fun DictionarySearchIframeHost(
     resourceHandler: ReaderLookupPopupResourceHandler,
     rootAtTop: Boolean,
     popupFrames: List<ReaderLookupPopupFramePayload>,
+    pullGestureEnabled: Boolean,
     onWebViewChanged: (WebView) -> Unit,
     onPullStarted: () -> Unit,
     onPullDistance: (Float) -> Unit,
@@ -769,6 +773,7 @@ private fun DictionarySearchIframeHost(
 ) {
     val currentRootAtTop = rememberUpdatedState(rootAtTop)
     val currentPopupFrames = rememberUpdatedState(popupFrames)
+    val currentPullGestureEnabled = rememberUpdatedState(pullGestureEnabled)
     val currentOnPullStarted = rememberUpdatedState(onPullStarted)
     val currentOnPullDistance = rememberUpdatedState(onPullDistance)
     val currentOnPullReleased = rememberUpdatedState(onPullReleased)
@@ -795,6 +800,7 @@ private fun DictionarySearchIframeHost(
         },
         onAttach = { webView ->
             webView.installDictionaryPullTouchObserver(
+                pullGestureEnabled = { currentPullGestureEnabled.value },
                 rootAtTop = { currentRootAtTop.value },
                 pullGestureCanStart = { event ->
                     val density = webView.resources.displayMetrics.density
@@ -818,6 +824,7 @@ private fun DictionarySearchIframeHost(
 
 @SuppressLint("ClickableViewAccessibility")
 private fun WebView.installDictionaryPullTouchObserver(
+    pullGestureEnabled: () -> Boolean,
     rootAtTop: () -> Boolean,
     pullGestureCanStart: (MotionEvent) -> Boolean,
     onPullStarted: () -> Unit,
@@ -832,13 +839,13 @@ private fun WebView.installDictionaryPullTouchObserver(
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 downY = event.y
-                canStart = rootAtTop() && pullGestureCanStart(event)
+                canStart = pullGestureEnabled() && rootAtTop() && pullGestureCanStart(event)
                 active = false
                 lastDistance = 0f
             }
             MotionEvent.ACTION_MOVE -> {
                 val distance = event.y - downY
-                if (canStart && rootAtTop() && distance > 0f) {
+                if (pullGestureEnabled() && canStart && rootAtTop() && distance > 0f) {
                     if (!active && distance > 8f) {
                         active = true
                         onPullStarted()
@@ -876,13 +883,14 @@ private fun DictionaryPullResetIndicator(
     thresholdPx: Float,
     topPaddingDp: Double,
     hasQuery: Boolean,
+    pullToClearQuery: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
     val reached = distancePx >= thresholdPx
     val label = when {
-        hasQuery && reached -> R.string.dictionary_release_clear
-        hasQuery -> R.string.dictionary_pull_clear
+        hasQuery && pullToClearQuery && reached -> R.string.dictionary_release_clear
+        hasQuery && pullToClearQuery -> R.string.dictionary_pull_clear
         reached -> R.string.dictionary_release_show_keyboard
         else -> R.string.dictionary_pull_show_keyboard
     }

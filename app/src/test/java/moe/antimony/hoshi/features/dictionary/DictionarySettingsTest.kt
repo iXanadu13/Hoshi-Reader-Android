@@ -35,6 +35,7 @@ class DictionarySettingsTest {
         assertEquals(DictionaryUpdateInterval.Weekly, settings.dictionaryUpdateInterval)
         assertEquals(null, settings.lastDictionaryUpdateEpochMillis)
         assertFalse(settings.dictionaryTabDefault)
+        assertTrue(settings.pullToClearQuery)
         assertTrue(settings.scanNonJapaneseText)
         assertEquals(16, settings.maxResults)
         assertEquals(16, settings.scanLength)

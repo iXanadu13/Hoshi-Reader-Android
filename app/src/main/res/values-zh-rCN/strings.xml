@@ -292,6 +292,7 @@
     <string name="dictionary_mode" comment="Dictionary setting label, intentionally matching reader appearance mode.">模式</string>
     <string name="dictionary_expand_first">展开第一个辞典</string>
     <string name="dictionary_settings_behaviour" comment="Settings group label, intentionally shared with Sync settings.">行为</string>
+    <string name="dictionary_pull_to_clear_query">下拉松开清空输入框</string>
     <string name="dictionary_compact_glossaries" comment="Dictionary setting label, intentionally matching Anki compact glossaries.">紧凑释义</string>
     <string name="dictionary_show_expression_tags">显示词形标签</string>
     <string name="dictionary_harmonic_frequency">调和词频</string>

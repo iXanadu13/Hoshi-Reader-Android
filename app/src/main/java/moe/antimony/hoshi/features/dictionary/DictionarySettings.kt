@@ -92,6 +92,7 @@ data class DictionarySettings(
     val dictionaryUpdateInterval: DictionaryUpdateInterval = DictionaryUpdateInterval.Weekly,
     val lastDictionaryUpdateEpochMillis: Long? = null,
     val dictionaryTabDefault: Boolean = false,
+    val pullToClearQuery: Boolean = true,
     val scanNonJapaneseText: Boolean = true,
     val maxResults: Int = 16,
     val scanLength: Int = 16,
@@ -143,6 +144,7 @@ class DictionarySettingsStore(context: Context) : DictionarySettingsLegacySource
             null
         },
         dictionaryTabDefault = preferences.getBoolean(KEY_DICTIONARY_TAB_DEFAULT, false),
+        pullToClearQuery = preferences.getBoolean(KEY_PULL_TO_CLEAR_QUERY, true),
         scanNonJapaneseText = preferences.getBoolean(KEY_SCAN_NON_JAPANESE_TEXT, true),
         maxResults = preferences.getInt(KEY_MAX_RESULTS, 16),
         scanLength = preferences.getInt(KEY_SCAN_LENGTH, 16),
@@ -183,6 +185,7 @@ class DictionarySettingsStore(context: Context) : DictionarySettingsLegacySource
                 }
             }
             .putBoolean(KEY_DICTIONARY_TAB_DEFAULT, normalized.dictionaryTabDefault)
+            .putBoolean(KEY_PULL_TO_CLEAR_QUERY, normalized.pullToClearQuery)
             .putBoolean(KEY_SCAN_NON_JAPANESE_TEXT, normalized.scanNonJapaneseText)
             .putInt(KEY_MAX_RESULTS, normalized.maxResults)
             .putInt(KEY_SCAN_LENGTH, normalized.scanLength)
@@ -207,6 +210,7 @@ class DictionarySettingsStore(context: Context) : DictionarySettingsLegacySource
         const val KEY_DICTIONARY_UPDATE_INTERVAL = "dictionaryUpdateInterval"
         const val KEY_LAST_DICTIONARY_UPDATE_EPOCH_MILLIS = "lastDictionaryUpdateEpochMillis"
         const val KEY_DICTIONARY_TAB_DEFAULT = "dictionaryTabDefault"
+        const val KEY_PULL_TO_CLEAR_QUERY = "pullToClearQuery"
         const val KEY_SCAN_NON_JAPANESE_TEXT = "scanNonJapaneseText"
         const val KEY_MAX_RESULTS = "maxResults"
         const val KEY_SCAN_LENGTH = "scanLength"
@@ -340,6 +344,7 @@ class DictionarySettingsRepository(
                 ?: DictionaryUpdateInterval.Weekly,
             lastDictionaryUpdateEpochMillis = this[KEY_LAST_DICTIONARY_UPDATE_EPOCH_MILLIS],
             dictionaryTabDefault = this[KEY_DICTIONARY_TAB_DEFAULT] ?: false,
+            pullToClearQuery = this[KEY_PULL_TO_CLEAR_QUERY] ?: true,
             scanNonJapaneseText = this[KEY_SCAN_NON_JAPANESE_TEXT] ?: true,
             maxResults = this[KEY_MAX_RESULTS] ?: 16,
             scanLength = this[KEY_SCAN_LENGTH] ?: 16,
@@ -375,6 +380,7 @@ class DictionarySettingsRepository(
             this[KEY_LAST_DICTIONARY_UPDATE_EPOCH_MILLIS] = lastUpdate
         }
         this[KEY_DICTIONARY_TAB_DEFAULT] = normalized.dictionaryTabDefault
+        this[KEY_PULL_TO_CLEAR_QUERY] = normalized.pullToClearQuery
         this[KEY_SCAN_NON_JAPANESE_TEXT] = normalized.scanNonJapaneseText
         this[KEY_MAX_RESULTS] = normalized.maxResults
         this[KEY_SCAN_LENGTH] = normalized.scanLength
@@ -459,6 +465,7 @@ class DictionarySettingsRepository(
         private val KEY_DICTIONARY_UPDATE_INTERVAL = stringPreferencesKey("dictionaryUpdateInterval")
         private val KEY_LAST_DICTIONARY_UPDATE_EPOCH_MILLIS = longPreferencesKey("lastDictionaryUpdateEpochMillis")
         private val KEY_DICTIONARY_TAB_DEFAULT = booleanPreferencesKey("dictionaryTabDefault")
+        private val KEY_PULL_TO_CLEAR_QUERY = booleanPreferencesKey("pullToClearQuery")
         private val KEY_SCAN_NON_JAPANESE_TEXT = booleanPreferencesKey("scanNonJapaneseText")
         private val KEY_MAX_RESULTS = intPreferencesKey("maxResults")
         private val KEY_SCAN_LENGTH = intPreferencesKey("scanLength")
@@ -487,6 +494,7 @@ class DictionarySettingsRepository(
 @Serializable
 private data class ProfileDictionarySettings(
     val dictionaryTabDefault: Boolean = false,
+    val pullToClearQuery: Boolean = true,
     val scanNonJapaneseText: Boolean = true,
     val maxResults: Int = 16,
     val scanLength: Int = 16,
@@ -517,6 +525,7 @@ private fun DictionarySettings.toProfileDictionarySettings(): ProfileDictionaryS
     normalized().let { settings ->
         ProfileDictionarySettings(
             dictionaryTabDefault = settings.dictionaryTabDefault,
+            pullToClearQuery = settings.pullToClearQuery,
             scanNonJapaneseText = settings.scanNonJapaneseText,
             maxResults = settings.maxResults,
             scanLength = settings.scanLength,
@@ -538,6 +547,7 @@ private fun DictionarySettings.toProfileDictionarySettings(): ProfileDictionaryS
 private fun DictionarySettings.withProfileDictionarySettings(profileSettings: ProfileDictionarySettings): DictionarySettings =
     copy(
         dictionaryTabDefault = profileSettings.dictionaryTabDefault,
+        pullToClearQuery = profileSettings.pullToClearQuery,
         scanNonJapaneseText = profileSettings.scanNonJapaneseText,
         maxResults = profileSettings.maxResults,
         scanLength = profileSettings.scanLength,

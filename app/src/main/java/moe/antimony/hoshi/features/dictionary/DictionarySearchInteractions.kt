@@ -14,8 +14,9 @@ internal fun dictionaryPullResetAction(
     distancePx: Float,
     thresholdPx: Float,
     hasQuery: Boolean,
+    pullToClearQuery: Boolean = true,
 ): DictionaryPullResetAction =
-    if (distancePx < thresholdPx) {
+    if (!pullToClearQuery || distancePx < thresholdPx) {
         DictionaryPullResetAction.None
     } else if (hasQuery) {
         DictionaryPullResetAction.ClearQueryAndFocus
